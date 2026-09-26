@@ -1,0 +1,23 @@
+WEEK 4 DATABASE INTEGRITY EVIDENCE
+========================================
+
+Foreign Key - Nonexistent Account
+Result: INSERT rejected
+SQLite error: FOREIGN KEY constraint failed
+
+Foreign Key - Nonexistent Customer
+Result: INSERT rejected
+SQLite error: FOREIGN KEY constraint failed
+
+Primary Key - Duplicate Customer ID
+Result: INSERT rejected
+SQLite error: UNIQUE constraint failed: customer.customer_id
+
+CHECK - Negative Transaction Amount
+Result: INSERT rejected
+SQLite error: CHECK constraint failed: amount > 0
+
+NOT NULL - Missing Customer Name
+Result: INSERT rejected
+SQLite error: NOT NULL constraint failed: customer.customer_name
+

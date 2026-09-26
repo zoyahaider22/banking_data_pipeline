@@ -1,0 +1,158 @@
+WEEK 4 SQL ANALYSIS EVIDENCE
+===================================
+
+QUERY 01 RESULTS
+------------------------------
+['transaction_id', 'transaction_date', 'transaction_type', 'amount', 'currency', 'account_id', 'customer_id', 'customer_name']
+('T1001', '2026-09-06', 'CREDIT', 500.0, 'USD', 'A1001', 'C1001', 'Maya Patel')
+('T1002', '2026-09-06', 'DEBIT', 125.5, 'USD', 'A1002', 'C1001', 'Maya Patel')
+('T1007', '2026-09-06', 'DEBIT', 40.0, 'USD', 'A1007', 'C1002', 'Daniel Kim')
+('T2001', '2026-09-06', 'CREDIT', 900.0, 'USD', 'A2001', 'C1003', 'Sofia Martinez')
+('T2005', '2026-09-06', 'CREDIT', 225.0, 'USD', 'A2005', 'C1003', 'Sofia Martinez')
+('T2007', '2026-09-06', 'DEBIT', 60.0, 'USD', 'A2007', 'C1004', 'Noah Williams')
+('T3001', '2026-09-06', 'CREDIT', 1000.0, 'USD', 'A3001', 'C1005', 'Ava Thompson')
+('T3002', '2026-09-06', 'DEBIT', 200.0, 'USD', 'A3002', 'C1005', 'Ava Thompson')
+('T3004', '2026-09-06', 'CREDIT', 350.0, 'USD', 'A3004', 'C1006', 'Ethan Brown')
+('T3007', '2026-09-06', 'DEBIT', 25.0, 'USD', 'A3007', 'C1006', 'Ethan Brown')
+
+QUERY 02 RESULTS
+------------------------------
+['transaction_id', 'transaction_date', 'transaction_type', 'amount', 'account_id', 'branch_id', 'branch_name', 'city', 'state']
+('T1001', '2026-09-06', 'CREDIT', 500.0, 'A1001', 'BR001', 'Downtown Branch', 'Chicago', 'IL')
+('T1002', '2026-09-06', 'DEBIT', 125.5, 'A1002', 'BR001', 'Downtown Branch', 'Chicago', 'IL')
+('T1007', '2026-09-06', 'DEBIT', 40.0, 'A1007', 'BR001', 'Downtown Branch', 'Chicago', 'IL')
+('T2001', '2026-09-06', 'CREDIT', 900.0, 'A2001', 'BR002', 'North Branch', 'Evanston', 'IL')
+('T2005', '2026-09-06', 'CREDIT', 225.0, 'A2005', 'BR002', 'North Branch', 'Evanston', 'IL')
+('T2007', '2026-09-06', 'DEBIT', 60.0, 'A2007', 'BR002', 'North Branch', 'Evanston', 'IL')
+('T3001', '2026-09-06', 'CREDIT', 1000.0, 'A3001', 'BR003', 'Lake Branch', 'Waukegan', 'IL')
+('T3002', '2026-09-06', 'DEBIT', 200.0, 'A3002', 'BR003', 'Lake Branch', 'Waukegan', 'IL')
+('T3004', '2026-09-06', 'CREDIT', 350.0, 'A3004', 'BR003', 'Lake Branch', 'Waukegan', 'IL')
+('T3007', '2026-09-06', 'DEBIT', 25.0, 'A3007', 'BR003', 'Lake Branch', 'Waukegan', 'IL')
+
+QUERY 03 RESULTS
+------------------------------
+['total_transaction_amount']
+(3425.5,)
+
+QUERY 04 RESULTS
+------------------------------
+['transaction_type', 'transaction_count', 'total_amount', 'average_amount']
+('CREDIT', 5, 2975.0, 595.0)
+('DEBIT', 5, 450.5, 90.1)
+
+QUERY 05 RESULTS
+------------------------------
+['customer_id', 'customer_name', 'customer_segment', 'transaction_count', 'total_transaction_amount', 'average_transaction_amount']
+('C1005', 'Ava Thompson', 'PREMIUM', 2, 1200.0, 600.0)
+('C1003', 'Sofia Martinez', 'PREMIUM', 2, 1125.0, 562.5)
+('C1001', 'Maya Patel', 'RETAIL', 2, 625.5, 312.75)
+('C1006', 'Ethan Brown', 'RETAIL', 2, 375.0, 187.5)
+('C1004', 'Noah Williams', 'RETAIL', 1, 60.0, 60.0)
+('C1002', 'Daniel Kim', 'RETAIL', 1, 40.0, 40.0)
+
+QUERY 06 RESULTS
+------------------------------
+['branch_id', 'branch_name', 'city', 'transaction_count', 'total_transaction_amount', 'average_transaction_amount']
+('BR003', 'Lake Branch', 'Waukegan', 4, 1575.0, 393.75)
+('BR002', 'North Branch', 'Evanston', 3, 1185.0, 395.0)
+('BR001', 'Downtown Branch', 'Chicago', 3, 665.5, 221.83)
+
+QUERY 07 RESULTS
+------------------------------
+['transaction_id', 'account_id', 'transaction_type', 'amount', 'amount_band']
+('T3001', 'A3001', 'CREDIT', 1000.0, 'Large')
+('T2001', 'A2001', 'CREDIT', 900.0, 'Large')
+('T1001', 'A1001', 'CREDIT', 500.0, 'Large')
+('T3004', 'A3004', 'CREDIT', 350.0, 'Medium')
+('T2005', 'A2005', 'CREDIT', 225.0, 'Medium')
+('T3002', 'A3002', 'DEBIT', 200.0, 'Medium')
+('T1002', 'A1002', 'DEBIT', 125.5, 'Medium')
+('T2007', 'A2007', 'DEBIT', 60.0, 'Small')
+('T1007', 'A1007', 'DEBIT', 40.0, 'Small')
+('T3007', 'A3007', 'DEBIT', 25.0, 'Small')
+
+QUERY 08 RESULTS
+------------------------------
+['transaction_type', 'transaction_count', 'total_amount', 'average_amount', 'minimum_amount', 'maximum_amount']
+('CREDIT', 5, 2975.0, 595.0, 225.0, 1000.0)
+('DEBIT', 5, 450.5, 90.1, 25.0, 200.0)
+
+QUERY 09 RESULTS
+------------------------------
+['customer_id', 'customer_name', 'total_amount', 'customer_rank']
+('C1005', 'Ava Thompson', 1200.0, 1)
+('C1003', 'Sofia Martinez', 1125.0, 2)
+('C1001', 'Maya Patel', 625.5, 3)
+('C1006', 'Ethan Brown', 375.0, 4)
+('C1004', 'Noah Williams', 60.0, 5)
+('C1002', 'Daniel Kim', 40.0, 6)
+
+QUERY 10 RESULTS
+------------------------------
+['transaction_id', 'transaction_date', 'transaction_type', 'amount', 'running_total']
+('T1001', '2026-09-06', 'CREDIT', 500.0, 500.0)
+('T1002', '2026-09-06', 'DEBIT', 125.5, 625.5)
+('T1007', '2026-09-06', 'DEBIT', 40.0, 665.5)
+('T2001', '2026-09-06', 'CREDIT', 900.0, 1565.5)
+('T2005', '2026-09-06', 'CREDIT', 225.0, 1790.5)
+('T2007', '2026-09-06', 'DEBIT', 60.0, 1850.5)
+('T3001', '2026-09-06', 'CREDIT', 1000.0, 2850.5)
+('T3002', '2026-09-06', 'DEBIT', 200.0, 3050.5)
+('T3004', '2026-09-06', 'CREDIT', 350.0, 3400.5)
+('T3007', '2026-09-06', 'DEBIT', 25.0, 3425.5)
+
+QUERY 11 RESULTS
+------------------------------
+['account_id', 'account_type', 'account_status', 'transaction_count', 'total_amount', 'average_amount']
+('A3001', 'CHECKING', 'ACTIVE', 1, 1000.0, 1000.0)
+('A2001', 'CHECKING', 'ACTIVE', 1, 900.0, 900.0)
+('A1001', 'CHECKING', 'ACTIVE', 1, 500.0, 500.0)
+('A3004', 'CHECKING', 'ACTIVE', 1, 350.0, 350.0)
+('A2005', 'SAVINGS', 'ACTIVE', 1, 225.0, 225.0)
+('A3002', 'SAVINGS', 'ACTIVE', 1, 200.0, 200.0)
+('A1002', 'SAVINGS', 'ACTIVE', 1, 125.5, 125.5)
+('A2007', 'CHECKING', 'ACTIVE', 1, 60.0, 60.0)
+('A1007', 'CHECKING', 'ACTIVE', 1, 40.0, 40.0)
+('A3007', 'SAVINGS', 'ACTIVE', 1, 25.0, 25.0)
+
+QUERY 12 RESULTS
+------------------------------
+['customer_id', 'customer_name', 'account_id', 'account_type', 'branch_name', 'city']
+('C1001', 'Maya Patel', 'A1001', 'CHECKING', 'Downtown Branch', 'Chicago')
+('C1001', 'Maya Patel', 'A1002', 'SAVINGS', 'Downtown Branch', 'Chicago')
+('C1002', 'Daniel Kim', 'A1007', 'CHECKING', 'Downtown Branch', 'Chicago')
+('C1003', 'Sofia Martinez', 'A2001', 'CHECKING', 'North Branch', 'Evanston')
+('C1003', 'Sofia Martinez', 'A2005', 'SAVINGS', 'North Branch', 'Evanston')
+('C1004', 'Noah Williams', 'A2007', 'CHECKING', 'North Branch', 'Evanston')
+('C1005', 'Ava Thompson', 'A3001', 'CHECKING', 'Lake Branch', 'Waukegan')
+('C1005', 'Ava Thompson', 'A3002', 'SAVINGS', 'Lake Branch', 'Waukegan')
+('C1006', 'Ethan Brown', 'A3004', 'CHECKING', 'Lake Branch', 'Waukegan')
+('C1006', 'Ethan Brown', 'A3007', 'SAVINGS', 'Lake Branch', 'Waukegan')
+
+QUERY 13 RESULTS
+------------------------------
+['branch_id', 'branch_name', 'transaction_type', 'transaction_count', 'total_amount']
+('BR001', 'Downtown Branch', 'CREDIT', 1, 500.0)
+('BR001', 'Downtown Branch', 'DEBIT', 2, 165.5)
+('BR002', 'North Branch', 'CREDIT', 2, 1125.0)
+('BR002', 'North Branch', 'DEBIT', 1, 60.0)
+('BR003', 'Lake Branch', 'CREDIT', 2, 1350.0)
+('BR003', 'Lake Branch', 'DEBIT', 2, 225.0)
+
+QUERY 14 RESULTS
+------------------------------
+['customer_id', 'customer_name', 'total_amount', 'average_customer_total']
+('C1005', 'Ava Thompson', 1200.0, 570.92)
+('C1003', 'Sofia Martinez', 1125.0, 570.92)
+('C1001', 'Maya Patel', 625.5, 570.92)
+
+QUERY 15 RESULTS
+------------------------------
+['customer_id', 'customer_name', 'total_amount', 'percentage_of_total']
+('C1005', 'Ava Thompson', 1200.0, 35.03)
+('C1003', 'Sofia Martinez', 1125.0, 32.84)
+('C1001', 'Maya Patel', 625.5, 18.26)
+('C1006', 'Ethan Brown', 375.0, 10.95)
+('C1004', 'Noah Williams', 60.0, 1.75)
+('C1002', 'Daniel Kim', 40.0, 1.17)
+

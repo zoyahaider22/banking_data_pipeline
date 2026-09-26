@@ -1,0 +1,7 @@
+customer_id,customer_name,email,customer_segment
+C1001,Maya Patel,maya.patel@example.com,RETAIL
+C1002,Daniel Kim,daniel.kim@example.com,RETAIL
+C1003,Sofia Martinez,sofia.martinez@example.com,PREMIUM
+C1004,Noah Williams,noah.williams@example.com,RETAIL
+C1005,Ava Thompson,ava.thompson@example.com,PREMIUM
+C1006,Ethan Brown,ethan.brown@example.com,RETAIL

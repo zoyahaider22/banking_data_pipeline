@@ -1,0 +1,44 @@
+WEEK 4 QUERY PLAN / INDEX EVIDENCE
+=============================================
+
+QUERY USED
+---------------------------------------------
+SELECT
+            t.transaction_id,
+            t.transaction_date,
+            t.transaction_type,
+            t.amount,
+            t.currency,
+            a.account_id,
+            c.customer_id,
+            c.customer_name
+        FROM bank_transaction AS t
+        JOIN account AS a
+            ON t.account_id = a.account_id
+        JOIN customer AS c
+            ON a.customer_id = c.customer_id
+        ORDER BY
+            t.transaction_date,
+            t.transaction_id;
+
+QUERY PLAN BEFORE INDEX
+---------------------------------------------
+(7, 0, 0, 'SCAN t')
+(9, 0, 0, 'SEARCH a USING INDEX sqlite_autoindex_account_1 (account_id=?)')
+(14, 0, 0, 'SEARCH c USING INDEX sqlite_autoindex_customer_1 (customer_id=?)')
+(33, 0, 0, 'USE TEMP B-TREE FOR ORDER BY')
+
+INDEX CREATED
+---------------------------------------------
+idx_bank_transaction_account_id ON bank_transaction(account_id)
+
+QUERY PLAN AFTER INDEX
+---------------------------------------------
+(7, 0, 0, 'SCAN t')
+(9, 0, 0, 'SEARCH a USING INDEX sqlite_autoindex_account_1 (account_id=?)')
+(14, 0, 0, 'SEARCH c USING INDEX sqlite_autoindex_customer_1 (customer_id=?)')
+(33, 0, 0, 'USE TEMP B-TREE FOR ORDER BY')
+
+NOTE
+---------------------------------------------
+The database contains only a small number of rows, so no measurable runtime improvement is claimed. The EXPLAIN QUERY PLAN output is used to show how the index changes SQLite's access strategy.
