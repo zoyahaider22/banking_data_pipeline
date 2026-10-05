@@ -25,17 +25,6 @@ def get_table_counts(connection):
     return counts
 
 
-if __name__ == "__main__":
-    connection = get_connection()
-
-    counts = get_table_counts(connection)
-
-    print("Database row counts:")
-
-    for table, count in counts.items():
-        print(f"{table}: {count}")
-
-    connection.close()
 
 def get_relationship_counts(connection):
     """Verify that foreign-key relationships resolve correctly."""
