@@ -50,25 +50,16 @@ def test_rejects_transaction_with_nonexistent_account(connection):
 def test_rejects_account_with_nonexistent_customer(connection):
     """An account cannot reference a customer that does not exist."""
 
+    # Valid branch so only the customer FK is under test
+    connection.execute(
+        "INSERT INTO branch (branch_id, branch_name, city, state) VALUES (?, ?, ?, ?)",
+        ("BR001", "Test Branch", "Delhi", "DL"),
+    )
+
     with pytest.raises(sqlite3.IntegrityError):
         connection.execute(
-            """
-            INSERT INTO account (
-                account_id,
-                customer_id,
-                branch_id,
-                account_type,
-                account_status
-            )
-            VALUES (?, ?, ?, ?, ?)
-            """,
-            (
-                "TEST_CUST_001",
-                "C9999",
-                "BR001",
-                "CHECKING",
-                "ACTIVE",
-            ),
+            "INSERT INTO account (account_id, customer_id, branch_id, account_type, account_status) VALUES (?, ?, ?, ?, ?)",
+            ("TEST_CUST_001", "C9999", "BR001", "CHECKING", "ACTIVE"),
         )
 
 def test_rejects_duplicate_customer_id(connection):
@@ -114,29 +105,30 @@ def test_rejects_duplicate_customer_id(connection):
 def test_rejects_negative_transaction_amount(connection):
     """Transaction amount must be greater than zero."""
 
+    # Set up a valid account so only the CHECK constraint is being tested
+    connection.execute(
+        "INSERT INTO branch (branch_id, branch_name, city, state) VALUES (?, ?, ?, ?)",
+        ("BR001", "Test Branch", "Delhi", "DL"),
+    )
+    connection.execute(
+        "INSERT INTO customer (customer_id, customer_name, email, customer_segment) VALUES (?, ?, ?, ?)",
+        ("C1001", "Test Customer", "test@example.com", "RETAIL"),
+    )
+    connection.execute(
+        "INSERT INTO account (account_id, customer_id, branch_id, account_type, account_status) VALUES (?, ?, ?, ?, ?)",
+        ("A1001", "C1001", "BR001", "CHECKING", "ACTIVE"),
+    )
+
     with pytest.raises(sqlite3.IntegrityError):
         connection.execute(
             """
             INSERT INTO bank_transaction (
-                transaction_id,
-                account_id,
-                transaction_date,
-                transaction_type,
-                amount,
-                currency,
-                source_file
+                transaction_id, account_id, transaction_date,
+                transaction_type, amount, currency, source_file
             )
             VALUES (?, ?, ?, ?, ?, ?, ?)
             """,
-            (
-                "TEST_AMOUNT_001",
-                "A1001",
-                "2026-09-06",
-                "CREDIT",
-                -50.00,
-                "USD",
-                "integrity_test.csv",
-            ),
+            ("TEST_AMOUNT_001", "A1001", "2026-09-06", "CREDIT", -50.00, "USD", "integrity_test.csv"),
         )
 
 def test_rejects_missing_required_customer_name(connection):
