@@ -57,9 +57,6 @@ def create_schema(connection):
 
 if __name__ == "__main__":
     connection = get_connection()
-
     create_schema(connection)
-
     print("Database schema created successfully.")
-
     connection.close()
