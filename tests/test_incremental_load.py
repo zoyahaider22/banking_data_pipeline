@@ -96,3 +96,17 @@ def test_rerun_does_not_increase_transaction_count(connection):
 
     assert count_transactions(connection) == 3
     assert get_amount(connection, "T9002") == 45.0
+
+def test_older_file_does_not_reverse_correction(connection):
+    """Reprocessing an older file must not overwrite a newer correction."""
+
+    load_daily_file(connection, DAY1)
+    load_daily_file(connection, DAY2)
+
+    counts = load_daily_file(connection, DAY1)
+
+    assert counts["skipped_stale"] == 1
+    assert counts["unchanged"] == 1
+    assert counts["updated"] == 0
+    assert get_amount(connection, "T9002") == 45.0
+    assert count_transactions(connection) == 3    

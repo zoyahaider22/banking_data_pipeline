@@ -26,6 +26,7 @@ UPSERT_SQL = """
         amount = excluded.amount,
         currency = excluded.currency,
         source_file = excluded.source_file
+    WHERE excluded.source_file >= bank_transaction.source_file
 """
 
 
@@ -75,9 +76,15 @@ def normalize_row(row, source_file):
 
 
 def load_daily_file(connection, csv_file):
-    """UPSERT one daily file and return inserted/updated/unchanged/rejected counts."""
+    """UPSERT one daily file and return per-row outcome counts."""
 
-    counts = {"inserted": 0, "updated": 0, "unchanged": 0, "rejected": 0}
+    counts = {
+        "inserted": 0,
+        "updated": 0,
+        "unchanged": 0,
+        "skipped_stale": 0,
+        "rejected": 0,
+    }
 
     with open(csv_file, "r", newline="", encoding="utf-8") as file:
         for row in csv.DictReader(file):
@@ -103,6 +110,8 @@ def load_daily_file(connection, csv_file):
 
             if existing is None:
                 counts["inserted"] += 1
+            elif existing[5] > values[6]:
+                counts["skipped_stale"] += 1
             elif tuple(existing) != values[1:]:
                 counts["updated"] += 1
             else:
@@ -128,6 +137,7 @@ def run_incremental_load():
                 f"inserted={counts['inserted']}, "
                 f"updated={counts['updated']}, "
                 f"unchanged={counts['unchanged']}, "
+                f"skipped_stale={counts['skipped_stale']}, "
                 f"rejected={counts['rejected']}"
             )
 
