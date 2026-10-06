@@ -1,15 +1,15 @@
 from pathlib import Path
 
-from src.analysis import run_query
-from src.database import get_connection
+from src.operational.analysis import run_query
+from src.operational.database import get_connection
 
 
 def capture_sql_analysis():
     """Run all SQL analysis queries and save their results as evidence."""
 
-    base_dir = Path(__file__).resolve().parent.parent
-    sql_file = base_dir / "sql" / "analysis_queries.sql"
-    evidence_file = base_dir / "evidence" / "sql_analysis_results.txt"
+    base_dir = Path(__file__).resolve().parent.parent.parent
+    sql_file = base_dir / "sql" / "operational_queries.sql"
+    evidence_file = base_dir / "evidence" / "class_4" / "sql_analysis_results.txt"
 
     connection = get_connection()
 

@@ -1,6 +1,6 @@
 from pathlib import Path
 
-from src.database import get_connection
+from src.operational.database import get_connection
 
 
 def get_table_counts(connection):
@@ -92,7 +92,7 @@ if __name__ == "__main__":
     # RUN ALL SQL ANALYSIS QUERIES
     # ================================================
 
-    sql_file = Path(__file__).resolve().parent.parent / "sql" / "analysis_queries.sql"
+    sql_file = Path(__file__).resolve().parent.parent.parent / "sql" / "operational_queries.sql"
 
     sql_text = sql_file.read_text(encoding="utf-8")
 

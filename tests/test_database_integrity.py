@@ -1,8 +1,8 @@
 import sqlite3
 import pytest
 
-from src.schema import create_schema
-from src.loader import load_all_data
+from src.operational.schema import create_schema
+from src.operational.loader import load_all_data
 
 
 @pytest.fixture

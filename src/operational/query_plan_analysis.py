@@ -1,13 +1,13 @@
 from pathlib import Path
 
-from src.database import get_connection
+from src.operational.database import get_connection
 
 
 def run_query_plan():
     """Capture SQLite query plan before and after adding an index."""
 
-    base_dir = Path(__file__).resolve().parent.parent
-    evidence_file = base_dir / "evidence" / "query_plan_results.txt"
+    base_dir = Path(__file__).resolve().parent.parent.parent
+    evidence_file = base_dir / "evidence" / "class_4" / "query_plan_results.txt"
 
     connection = get_connection()
 

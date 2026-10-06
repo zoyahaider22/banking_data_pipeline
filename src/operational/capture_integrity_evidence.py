@@ -1,6 +1,6 @@
 import sqlite3
 
-from src.schema import create_schema
+from src.operational.schema import create_schema
 
 
 def run_integrity_evidence():
@@ -159,7 +159,7 @@ def run_integrity_evidence():
 
     connection.close()
 
-    evidence_file = "evidence/integrity_failures.txt"
+    evidence_file = "evidence/class_4/integrity_failures.txt"
 
     with open(evidence_file, "w", encoding="utf-8") as file:
         file.write("WEEK 4 DATABASE INTEGRITY EVIDENCE\n")

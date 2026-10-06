@@ -1,7 +1,7 @@
-from src.config import DATABASE_FILE
-from src.database import get_connection
-from src.schema import create_schema
-from src.loader import load_all_data
+from src.operational.config import DATABASE_FILE
+from src.operational.database import get_connection
+from src.operational.schema import create_schema
+from src.operational.loader import load_all_data
 
 
 def reset_database():

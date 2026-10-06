@@ -1,6 +1,6 @@
 import csv
 
-from src.config import (
+from src.operational.config import (
     CUSTOMERS_FILE,
     BRANCHES_FILE,
     ACCOUNTS_FILE,
