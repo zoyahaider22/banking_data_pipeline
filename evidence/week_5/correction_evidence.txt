@@ -1,0 +1,9 @@
+﻿BEFORE incremental load (banking.db rebuilt from validated data)
+bank_transaction rows: 10
+T1001 (amount, source_file): (500.0, 'BR001_20260906_TRANSACTION.csv')
+T4002 (amount, source_file): None
+
+AFTER incremental load
+bank_transaction rows: 20
+T1001 (amount, source_file): (550.0, 'transactions_20260908.csv')
+T4002 (amount, source_file): (55.0, 'transactions_20260909.csv')
