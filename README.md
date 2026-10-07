@@ -1,764 +1,259 @@
-# Week 4 - Relational Banking Database
+﻿# Banking Data Pipeline
 
-## Overview
-
-This project extends the Week 3 branch transaction pipeline by moving validated transaction data into a relational SQLite banking database.
-
-The Week 3 pipeline produced 24 transaction records, of which 10 were valid and 14 were rejected. Week 4 uses only the 10 validated transactions and combines them with the supplied customer, account, and branch reference data.
-
-The database is designed to preserve relationships between customers, accounts, branches, and transactions while using database constraints to protect data integrity.
-
-The project also includes SQL analysis, automated database integrity tests, deliberate constraint-failure evidence, and an `EXPLAIN QUERY PLAN` investigation.
-
----
-
-## Project Objectives
-
-The main objectives of this project are:
-
-- Build a normalized relational banking database using SQLite.
-- Load the supplied customer, branch, account, and Week 3 valid transaction data.
-- Preserve Customer -> Account, Branch -> Account, and Account -> Transaction relationships.
-- Enforce primary-key, foreign-key, `NOT NULL`, and `CHECK` constraints.
-- Make the database build process safe to rerun.
-- Demonstrate database integrity failures using deliberate invalid inserts.
-- Perform meaningful SQL analysis using JOINs, aggregations, CASE expressions, CTEs, and window functions.
-- Investigate SQLite query plans before and after creating an index.
-- Automate important database behavior using pytest.
-- Produce evidence that demonstrates the database works as designed.
-
----
-
-## Technologies Used
-
-- Python 3.11
-- SQLite
-- Python `sqlite3`
-- SQL
-- pytest
-- CSV files
-- Markdown documentation
-
-No external database server is required.
-
----
+An end-to-end banking data project, consolidated in Week 5 into one repository. Raw branch transaction files are validated, trusted data is loaded into a relational SQLite database, daily corrections are applied incrementally, and a separate star-schema database is built for analysis.
 
 ## Architecture and Data Flow
 
-The project follows this flow:
-
 ```text
-Week 3 Valid Transactions
-        |
-        v
-valid_transactions.csv
-        |
-        +------------------+
-        |                  |
-        v                  v
-customers.csv        branches.csv
-        |                  |
-        +--------+---------+
-                 |
-                 v
-           accounts.csv
-                 |
-                 v
-          SQLite Database
-            banking.db
-                 |
-       +---------+---------+
-       |         |         |
-       v         v         v
-   Customer   Branch    Account
-                           |
-                           v
-                    Bank Transaction
-                           |
-                           v
-                     SQL Analysis
-                           |
-                           v
-                 Query Plan / Index
-                           |
-                           v
-                       Evidence
-```
-
-The database loading order is:
-
-```text
-Customer
+data/raw  (branch CSV files, untrusted source)
    |
    v
-Account
+src/ingestion  (extract, validate, DQ, logging)
+   |--> data/validated        valid_transactions.csv, invalid_transactions.csv
+   '--> output/dq, output/logs   DQsummary.csv, pipeline.log
+
+data/validated + data/reference
    |
    v
-Transaction
-
-Branch
+src/operational/build_database.py   (initial relational load)
    |
    v
-Account
+database/banking.db  <--- data/daily via src/operational/incremental_load.py (UPSERT)
+   |
+   v
+src/analytics/build_analytics.py
+   |
+   v
+database/analytics.db   (star schema)
+   |
+   v
+sql/analytical_queries.sql
 ```
 
-This loading order ensures that referenced parent records exist before dependent records are inserted.
-
----
-
-## Relational Database Design
-
-The database contains four main entities:
-
-```text
-CUSTOMER
-    |
-    | 1-to-many
-    v
-ACCOUNT
-    ^
-    | many-to-1
-    |
-BRANCH
-
-ACCOUNT
-    |
-    | 1-to-many
-    v
-BANK_TRANSACTION
-```
-
-### Tables
-
-#### Customer
-
-Stores customer master information.
-
-| Column | Type | Constraint |
-|---|---|---|
-| `customer_id` | TEXT | PRIMARY KEY |
-| `customer_name` | TEXT | NOT NULL |
-| `email` | TEXT | NOT NULL |
-| `customer_segment` | TEXT | NOT NULL |
-
-#### Branch
-
-Stores bank branch information.
-
-| Column | Type | Constraint |
-|---|---|---|
-| `branch_id` | TEXT | PRIMARY KEY |
-| `branch_name` | TEXT | NOT NULL |
-| `city` | TEXT | NOT NULL |
-| `state` | TEXT | NOT NULL |
-
-#### Account
-
-Stores account information and connects customers to branches.
-
-| Column | Type | Constraint |
-|---|---|---|
-| `account_id` | TEXT | PRIMARY KEY |
-| `customer_id` | TEXT | NOT NULL, FOREIGN KEY |
-| `branch_id` | TEXT | NOT NULL, FOREIGN KEY |
-| `account_type` | TEXT | NOT NULL |
-| `account_status` | TEXT | NOT NULL |
-
-Relationships:
-
-```text
-account.customer_id -> customer.customer_id
-account.branch_id   -> branch.branch_id
-```
-
-#### Bank Transaction
-
-Stores validated Week 3 transactions.
-
-| Column | Type | Constraint |
-|---|---|---|
-| `transaction_id` | TEXT | PRIMARY KEY |
-| `account_id` | TEXT | NOT NULL, FOREIGN KEY |
-| `transaction_date` | TEXT | NOT NULL |
-| `transaction_type` | TEXT | NOT NULL |
-| `amount` | REAL | NOT NULL, CHECK(amount > 0) |
-| `currency` | TEXT | NOT NULL |
-| `source_file` | TEXT | NOT NULL |
-
-Relationship:
-
-```text
-bank_transaction.account_id -> account.account_id
-```
-
-The table is named `bank_transaction` rather than `transaction` to avoid ambiguity with SQL transaction terminology.
-
----
-
-## Why the Database Is Normalized
-
-Customer information is not repeated on every transaction.
-
-For example, a customer's name and email are stored once in the `customer` table rather than being copied into every transaction row.
-
-The transaction stores only the `account_id`. The account identifies the customer through the foreign-key relationship.
-
-This reduces:
-- duplicate data
-- inconsistent customer information
-- update anomalies
-- unnecessary storage
-
-The same principle applies to branch information. Branch details are stored once in the `branch` table and referenced through `account.branch_id`.
-
-The relational design therefore separates master data from transaction data while preserving the relationships between them.
-
----
-
-## Supplied Data
-
-The project uses the supplied reference datasets:
-
-```text
-data/
-├── customers.csv
-├── branches.csv
-├── accounts.csv
-└── valid_transactions.csv
-```
-
-The Week 3 valid transaction output contains:
-
-```text
-Total Week 3 transactions: 24
-Valid transactions:        10
-Invalid transactions:      14
-```
-
-Only the 10 valid transactions are loaded into the database.
-
-The invalid Week 3 transactions are not loaded as production transactions.
-
----
-
-## Project Structure
-
-```text
-week4_banking_database/
-│
-├── data/
-│   ├── customers.csv
-│   ├── branches.csv
-│   ├── accounts.csv
-│   └── valid_transactions.csv
-│
-├── docs/
-│   └── ERD.md
-│
-├── evidence/
-│   ├── capture_integrity_evidence.py
-│   ├── capture_sql_analysis.py
-│   ├── query_plan_analysis.py
-│   ├── integrity_failures.txt
-│   ├── sql_analysis_results.txt
-│   └── query_plan_results.txt
-│
-├── sql/
-│   └── analysis_queries.sql
-│
-├── src/
-│   ├── analysis.py
-│   ├── config.py
-│   ├── database.py
-│   ├── loader.py
-│   └── schema.py
-│
-├── tests/
-│   └── test_database_integrity.py
-│
-├── banking.db
-├── build_database.py
-├── .gitignore
-└── README.md
-```
-
----
-
-## Database Build and Load
-
-The complete database can be rebuilt using:
-
-```bash
-py build_database.py
-```
-
-The build process:
-
-1. Removes the existing database when rebuilding.
-2. Creates `banking.db`.
-3. Enables SQLite foreign-key enforcement.
-4. Creates the database schema.
-5. Loads customers.
-6. Loads branches.
-7. Loads accounts.
-8. Loads the 10 valid Week 3 transactions.
-9. Commits the data.
-10. Reports the final row counts.
-
-Expected loaded data:
-
-```text
-Customers loaded: 6
-Branches loaded: 3
-Accounts loaded: 10
-Transactions loaded: 10
-```
-
-The database can therefore be rebuilt from the supplied input files instead of depending on manually inserted records.
-
----
-
-## Safe Rerun Behavior
-
-The database build process removes the existing `banking.db` before rebuilding it.
-
-This means running:
-
-```bash
-py build_database.py
-```
-
-again creates a clean database instead of silently appending duplicate business records.
-
-The expected counts remain:
-
-```text
-customer:          6
-branch:            3
-account:          10
-bank_transaction: 10
-```
-
----
-
-## Data Integrity Strategy
-
-Data integrity is protected at two levels.
-
-### 1. Python / Pipeline Validation
-
-The Week 3 pipeline validates transaction data before it reaches the database.
-
-This prevents invalid transaction records from being treated as valid production data.
-
-The Week 4 database then provides a second layer of protection.
-
-### 2. Database Constraints
-
-SQLite enforces:
-- `PRIMARY KEY`
-- `FOREIGN KEY`
-- `NOT NULL`
-- `CHECK`
-
-For example:
-
-```sql
-CHECK(amount > 0)
-```
-
-prevents negative or zero transaction amounts from being inserted.
-
-Foreign keys prevent accounts from referencing nonexistent customers and transactions from referencing nonexistent accounts.
-
-This provides defense in depth: Python validates incoming data, while the database protects the stored relational data.
-
----
-
-## Integrity Failure Evidence
-
-The project deliberately attempts invalid operations to demonstrate that SQLite protects the database.
-
-The following scenarios are tested:
-
-### 1. Nonexistent Account
-
-A transaction is inserted with an account ID that does not exist.
-
-**Expected result:**
-```text
-FOREIGN KEY constraint failed
-```
-
-### 2. Nonexistent Customer
-
-An account is inserted with a customer ID that does not exist.
-
-**Expected result:**
-```text
-FOREIGN KEY constraint failed
-```
-
-### 3. Duplicate Primary Key
-
-A customer is inserted using an existing customer ID.
-
-**Expected result:**
-```text
-UNIQUE constraint failed: customer.customer_id
-```
-
-### 4. Negative Transaction Amount
-
-A transaction is inserted with an amount of -50.
-
-**Expected result:**
-```text
-CHECK constraint failed: amount > 0
-```
-
-### 5. Missing Required Customer Name
-
-A customer is inserted with `customer_name = NULL`.
-
-**Expected result:**
-```text
-NOT NULL constraint failed: customer.customer_name
-```
-
-The captured evidence is stored in:
-
-```text
-evidence/integrity_failures.txt
-```
-
----
-
-## SQL Analysis
-
-The SQL analysis is stored in:
-
-```text
-sql/analysis_queries.sql
-```
-
-The project contains 15 SQL analysis queries.
-
-The queries cover the required categories:
-
-### JOINs
-
-Queries connect transactions with:
-- accounts
-- customers
-- branches
-
-This allows transaction-level data to be analyzed together with related banking information.
-
-### Aggregations
-
-Queries calculate:
-- transaction counts
-- transaction totals
-- customer totals
-- branch totals
-- transaction-type totals
-
-### CASE
-
-`CASE` expressions classify transaction amounts into meaningful amount bands.
-
-For example: Small / Medium / Large
-
-This allows transaction distributions to be analyzed using business-friendly categories.
-
-### CTE
-
-Common Table Expressions are used to create derived results that can then be filtered or analyzed.
-
-### Window Functions
-
-The analysis includes window-function queries such as ranking transactions within groups and calculating running totals.
-
-### Original Business Question
-
-The project also includes a business-oriented question using SQL rather than only reproducing basic table queries.
-
-The complete query results are captured in:
-
-```text
-evidence/sql_analysis_results.txt
-```
-
-Run the SQL analysis with:
-
-```bash
-py -m src.analysis
-```
-
----
-
-## Query Plan and Index Investigation
-
-The project investigates the query plan for a transaction-to-account-to-customer join.
-
-The query uses `bank_transaction.account_id` as a join key, so an index was created:
-
-```sql
-CREATE INDEX IF NOT EXISTS idx_bank_transaction_account_id
-ON bank_transaction(account_id);
-```
-
-The query plan was captured both before and after the index.
-
-The investigation can be run with:
-
-```bash
-py -m evidence.query_plan_analysis
-```
-
-Evidence is stored in:
-
-```text
-evidence/query_plan_results.txt
-```
-
-### Important Observation
-
-The database contains only 10 transaction rows.
-
-After adding the index, SQLite's query plan for this particular query still reported a scan of the transaction table.
-
-Therefore, this project does not claim that the index produced a measurable runtime improvement.
-
-The purpose of the investigation is to demonstrate how `EXPLAIN QUERY PLAN` can be used to understand SQLite's access strategy and reason about appropriate indexing.
-
-A query plan describes the strategy SQLite chooses; it does not by itself prove a measurable performance improvement.
-
----
-
-## Automated Testing
-
-Database behavior is tested using pytest.
-
-The automated test suite currently contains 8 meaningful database tests covering:
-
-- foreign-key rejection for nonexistent accounts
-- foreign-key rejection for nonexistent customers
-- duplicate primary-key rejection
-- CHECK constraint rejection for negative transaction amounts
-- NOT NULL constraint rejection
-- expected database tables
-- foreign-key enforcement
-- expected row counts loaded through the production `load_all_data()` function
-
-The tests use isolated SQLite in-memory databases where appropriate and verify actual database behavior.
-
-Run the complete test suite with:
-
-```bash
-py -m pytest -q
-
----
-
-## Evidence Files
-
-The project stores supporting evidence separately from source code.
-
-```text
-evidence/
-├── integrity_failures.txt
-├── sql_analysis_results.txt
-└── query_plan_results.txt
-```
-
-These files provide evidence for:
-- database integrity failures
-- SQL query results
-- before/after query-plan investigation
-
----
-
-## How to Run the Project
-
-### 1. Activate the virtual environment
-
-Windows PowerShell:
+Diagrams: `docs/erd/ERD.md` (relational ERD), `docs/analytics/star_schema.md` (star schema), `docs/analytics/data_lineage.md` (end-to-end lineage).
+
+| Stage | Code | Reads | Produces |
+|---|---|---|---|
+| 1. Ingestion and validation | `src/ingestion/` | `data/raw/` | `data/validated/`, `output/dq/`, `output/logs/` |
+| 2. Initial relational load | `src/operational/build_database.py` | `data/validated/`, `data/reference/` | `database/banking.db` |
+| 3. Incremental daily load | `src/operational/incremental_load.py` | `data/daily/` | updated `database/banking.db` |
+| 4. Analytical build | `src/analytics/build_analytics.py` | `database/banking.db` only | `database/analytics.db` |
+| 5. Analysis | `sql/analytical_queries.sql` | `database/analytics.db` | query results |
+
+## Setup
+
+Requirements: Python 3.11. Dependencies are listed in `requirements.txt` (`pandas`, `pytest`). `sqlite3` is part of the Python standard library.
 
 ```powershell
-.\.venv\Scripts\Activate.ps1
+python -m venv .venv
+.venv\Scripts\Activate.ps1
+pip install -r requirements.txt
 ```
 
-### 2. Build the database
+All commands in this README are run from the repository root, using `python -m` (for example `python -m pytest`). Running bare `pytest` fails with `No module named 'src'`.
 
-```bash
-py build_database.py
-```
-
-### 3. Check database analysis and row counts
-
-```bash
-py -m src.analysis
-```
-
-### 4. Run integrity tests
-
-```bash
-py -m pytest -v
-```
-
-### 5. Generate integrity-failure evidence
-
-```bash
-py -m evidence.capture_integrity_evidence
-```
-
-### 6. Generate SQL analysis evidence
-
-```bash
-py -m evidence.capture_sql_analysis
-```
-
-### 7. Generate query-plan evidence
-
-```bash
-py -m evidence.query_plan_analysis
-```
-
----
-
-## Conceptual Questions
-
-### 1. Why should customer information not be repeated on every transaction?
-
-Customer information should be stored in the `customer` table and referenced through the account relationship.
-
-Repeating customer information on every transaction creates duplicate data and can cause inconsistencies. For example, if a customer's email changes, many transaction rows would need to be updated.
-
-Storing customer information once reduces duplication and makes updates more reliable.
-
-### 2. What is the difference between Python validation and a database constraint?
-
-Python validation checks data before it is loaded into the database.
-
-For example, the Week 3 pipeline determines whether a transaction is valid before loading it.
-
-A database constraint is enforced by SQLite itself when data is inserted or updated.
-
-For example:
-
-```sql
-CHECK(amount > 0)
-```
-
-prevents an invalid amount from being stored even if application-level validation is bypassed.
-
-Therefore, Python validation helps prevent bad data from reaching the database, while database constraints protect the database itself.
-
-### 3. What could happen if foreign-key enforcement were disabled?
-
-If foreign-key enforcement were disabled, SQLite could allow records that reference nonexistent parent records.
-
-For example, a transaction could contain:
+## Repository Structure
 
 ```text
-account_id = A9999
+.
+|-- README.md
+|-- requirements.txt
+|-- data/
+|   |-- raw/          branch transaction files (BR001, BR002, BR003)
+|   |-- reference/    customers.csv, accounts.csv, branches.csv
+|   |-- validated/    valid_transactions.csv, invalid_transactions.csv
+|   `-- daily/        transactions_20260907.csv, _20260908.csv, _20260909.csv
+|-- src/
+|   |-- ingestion/    config, extract, validate, pipeline, run_test_scenario
+|   |-- operational/  schema, database, loader, build_database, incremental_load, analysis, evidence scripts
+|   `-- analytics/    build_analytics.py
+|-- output/
+|   |-- dq/           DQsummary.csv
+|   `-- logs/         pipeline.log
+|-- database/         banking.db, analytics.db
+|-- sql/              operational_queries.sql, analytical_queries.sql
+|-- tests/
+|   |-- fixtures/     test_scenarios/ (T01-T10), daily_day1.csv, daily_day2.csv
+|   `-- test_*.py     validation, pipeline, database integrity, incremental load, analytics
+|-- evidence/
+|   |-- earlier_pipeline/   earlier pipeline test results, DQ summary, log
+|   |-- class_4/            integrity failures, SQL results, query plans
+|   `-- week_5/             incremental, correction, rerun, table counts, query results, pytest
+`-- docs/
+    |-- erd/          relational ERD
+    `-- analytics/    star-schema and data-lineage diagrams
 ```
 
-even if account `A9999` does not exist.
+## Folder Responsibilities
 
-This would create broken relationships and make joins and downstream analysis less reliable.
+| Folder | Responsibility |
+|---|---|
+| `data/raw` | Original supplied branch files. Untrusted source data, kept unchanged. |
+| `data/reference` | Supplied customer, account and branch master data. |
+| `data/validated` | Business-data output of the validation stage: valid and rejected transactions. |
+| `data/daily` | Supplied Week 5 daily files (new transactions and corrections). Not edited. |
+| `src` | All code that does the work, one folder per stage. |
+| `output` | Artifacts generated each time the pipeline runs (DQ summary, log). |
+| `database` | The two persisted SQLite layers. `banking.db` is the trusted relational state, `analytics.db` is derived from it. |
+| `sql` | Operational and analytical SQL. |
+| `tests` | Automated pytest tests. `tests/fixtures` holds deliberately constructed test input, kept apart from real data. |
+| `evidence` | Proof deliberately captured to show requirements work (different from `output`, which is generated on every run). |
+| `docs` | Design diagrams. |
 
-The project therefore explicitly enables foreign-key enforcement.
+There is no `config/` folder: configuration lives in `src/ingestion/config.py` and `src/operational/config.py`, as it did in the earlier projects.
 
-### 4. Why might adding indexes to every column be a bad idea?
+## Run Order
 
-Indexes can improve lookup and join performance, but they also require storage and maintenance.
+Run these from the repository root, in this order.
 
-When rows are inserted, updated, or deleted, related indexes may also need to be maintained.
+| # | Command | Expected result |
+|---|---|---|
+| 1 | `python -m src.ingestion.pipeline` | 24 records read, 10 valid, 14 invalid. Writes `data/validated/`, `output/dq/DQsummary.csv` and `output/logs/pipeline.log`. |
+| 2 | `python -m src.operational.build_database` | Deletes and rebuilds `database/banking.db`: 6 customers, 3 branches, 10 accounts, 10 transactions. |
+| 3 | `python -m src.operational.incremental_load` | Processes `data/daily/transactions_*.csv` in date order. First run: 0907 inserted 4, 0908 inserted 3 and updated 1, 0909 inserted 3 and updated 1. Total 20 transactions. |
+| 4 | `python -m src.operational.incremental_load` (again) | Rerun: nothing inserted or updated (unchanged 3, 4 and 4), the 0907 file reports `skipped_stale=1`. Total stays 20. |
+| 5 | `python -m src.analytics.build_analytics` | Deletes and rebuilds `database/analytics.db`: 6 customers, 10 accounts, 3 branches, 4 dates, 20 fact rows. |
+| 6 | `sql/analytical_queries.sql` | Seven queries against `analytics.db` (see Analytical SQL below). |
+| 7 | `python -m pytest -v` | 41 passed. |
 
-Adding unnecessary indexes can therefore increase storage and write overhead without providing a useful benefit.
+Step 2 rebuilds `banking.db` from scratch, so after it runs, the daily files must be loaded again (step 3). Edge-case scenarios from the earlier pipeline can be run with `python -m src.ingestion.run_test_scenario T01_new_branch` (T01 to T10). Each writes only to its own folder under `tests/fixtures/test_scenarios/`.
 
-Indexes should be created for columns that are frequently used for meaningful lookups, joins, filtering, or ordering.
+## From Raw Files to Validated Data
 
-### 5. What is one difference between this relational banking database and an analytical data warehouse?
+`src/ingestion` reads every file in `data/raw` matching `BR*_*_TRANSACTION.csv`. Files must contain the six required columns: `transaction_id`, `account_id`, `transaction_date`, `transaction_type`, `amount`, `currency`. Rules applied:
 
-This SQLite database is designed around relational banking entities such as customers, accounts, branches, and transactions.
+- `transaction_id` and `account_id` must be present.
+- `transaction_date` must be a real calendar date in `YYYY-MM-DD` format.
+- `transaction_type` must be `CREDIT` or `DEBIT`.
+- `amount` must be a plain decimal number greater than zero.
+- `currency` must be `USD`.
+- `transaction_id` must be unique across all branch files. Every occurrence of a duplicated ID is invalid.
 
-It is suitable for transactional-style relational storage and integrity enforcement.
+A file with a missing column is skipped and recorded as a file-level error, so the other files can still be processed. Row-level failures go to `data/validated/invalid_transactions.csv` with an `error_reason` column (several reasons for one row are separated by `; `). Valid rows go to `data/validated/valid_transactions.csv`.
 
-An analytical data warehouse is generally designed for large-scale analytical queries, reporting, historical analysis, and aggregations, often using a different modeling and storage strategy.
+Generated artifacts: `output/dq/DQsummary.csv` (files discovered, read and rejected, record counts, rejection rate, duplicates, failures by rule) and `output/logs/pipeline.log` (start and end, files processed, warnings and errors). The earlier pipeline has no separate run-summary file: the run summary is `DQsummary.csv`.
 
-The main focus of this project is maintaining relational structure and data integrity while supporting useful SQL analysis.
+## Initial Relational Load
 
----
+`build_database.py` creates `banking.db` with four tables (`customer`, `branch`, `account`, `bank_transaction`), enabling foreign keys. It loads customers, branches and accounts from `data/reference` and the 10 valid transactions from `data/validated`. Constraints enforced by SQLite: primary keys, foreign keys, `NOT NULL`, `CHECK (amount > 0)`, `CHECK` on transaction type (`CREDIT` or `DEBIT`) and currency (`USD`). The ERD is in `docs/erd/ERD.md`.
+
+## Incremental Daily Load
+
+`src/operational/incremental_load.py` applies one daily file at a time to the existing `banking.db`, without rebuilding it. For each row it:
+
+1. normalizes the date (`YYYY-MM-DD` and `MM/DD/YYYY` are accepted) and the amount;
+2. validates the row, and counts it as `rejected` if it fails;
+3. sets `source_file` from the file name;
+4. writes it with an UPSERT: `ON CONFLICT(transaction_id) DO UPDATE ... WHERE excluded.source_file >= bank_transaction.source_file`.
+
+Each file reports `inserted`, `updated`, `unchanged`, `skipped_stale` and `rejected` counts.
+
+**New transactions:** a `transaction_id` that does not exist yet is inserted.
+
+**Corrections:** a later trusted row with an existing `transaction_id` is treated as a correction, and the stored row is updated. For example, T1001 changes from 500.0 to 550.0 (from `transactions_20260908.csv`), and T4002 ends at 55.0 (from `transactions_20260909.csv`). `INSERT OR IGNORE` would have kept the old values.
+
+**Rerun safety:** running the same files again is safe for three reasons. `transaction_id` is the primary key, so a duplicate row cannot exist. Writing is an UPSERT, not a plain insert, so a repeated row updates in place. And the `source_file` guard stops an older file from overwriting a newer correction: re-running `transactions_20260907.csv` after the 0909 file is reported as `skipped_stale`, and T4002 keeps 55.0. Files are named with their date, so the order in which `sorted()` processes them is date order.
+
+## Analytical Layer
+
+`src/analytics/build_analytics.py` reads only `banking.db` (never the raw branch files) and builds `database/analytics.db` as a star schema. The file is deleted and rebuilt on every run, so the result is repeatable.
+
+**Grain: one row in `fact_transaction` represents one banking transaction.** `transaction_id` is its primary key.
+
+| Table | Role | Columns |
+|---|---|---|
+| `fact_transaction` | fact | `transaction_id` (PK), `account_id`, `customer_id`, `branch_id`, `date_key`, `transaction_type`, `amount`, `currency` |
+| `dim_customer` | dimension | `customer_id` (PK), `customer_name`, `email`, `customer_segment` |
+| `dim_account` | dimension | `account_id` (PK), `account_type`, `account_status` |
+| `dim_branch` | dimension | `branch_id` (PK), `branch_name`, `city`, `state` |
+| `dim_date` | dimension | `date_key` (PK, `YYYYMMDD`), `full_date`, `year`, `month`, `day`, `day_name` |
+
+The dimensions use natural keys (no surrogate keys or history tracking, which are out of scope this week). `customer_id` and `branch_id` are carried on the fact row by joining each transaction to its account. Foreign keys are enforced in `analytics.db`. Diagram: `docs/analytics/star_schema.md`. Lineage: `docs/analytics/data_lineage.md`.
+
+**About `amount`:** it is always positive, and `transaction_type` says whether money came in or went out. So `SUM(amount)` is gross volume, not a balance. Net cash flow is `SUM(CASE WHEN transaction_type = 'CREDIT' THEN amount ELSE -amount END)`.
+
+## SQL
+
+- **Operational:** `sql/operational_queries.sql` holds the relational queries against `banking.db`, run with `python -m src.operational.analysis`.
+- **Analytical:** `sql/analytical_queries.sql` holds seven queries against `analytics.db`: by branch, by transaction type, by customer, by account, by date, segment by branch (a fact joined to two dimensions), and our own question (accounts with net outflow). Run them with any SQLite client against `database/analytics.db`. The returned results and interpretations are saved in `evidence/week_5/analytical_query_results.txt`.
+
+## Tests
+
+```powershell
+python -m pytest -v
+```
+
+41 tests, all passing (`evidence/week_5/pytest_output.txt`):
+
+| File | Tests | Covers |
+|---|---|---|
+| `test_validation.py` | 15 | each field rule in isolation |
+| `test_pipeline.py` | 8 | extract plus validate, bad files, DQ summary and log, duplicates, the 24 / 10 / 14 baseline |
+| `test_database_integrity.py` | 8 | constraints, foreign keys, table list, row counts |
+| `test_incremental_load.py` | 4 | new rows inserted, correction updates the value, rerun keeps the count, older file cannot reverse a correction |
+| `test_analytics.py` | 6 | fact count matches banking, no duplicate IDs, valid dimension keys, customer and branch from account, known net cash flow result, repeatable rebuild |
+
+Always use `python -m pytest`, not bare `pytest`.
+
+## Fixtures and Evidence
+
+- `tests/fixtures/` holds deliberately constructed input: the T01 to T10 scenario inputs and the two daily test files. Generated `output/` folders inside the scenarios are ignored by git.
+- `evidence/earlier_pipeline/`: pytest run for the earlier pipeline tests, DQ summary, pipeline log, Week 2 test results workbook.
+- `evidence/class_4/`: integrity failures, SQL analysis results, query plans.
+- `evidence/week_5/`: `incremental_load_evidence.txt` (first load, new rows), `correction_evidence.txt` (T1001 before and after), `rerun_evidence.txt` (stable counts, corrections kept), `table_counts.txt`, `analytical_query_results.txt`, `pytest_output.txt`.
 
 ## Assumptions
 
-The following assumptions were made:
+- The three supplied daily files are already valid, trusted input. Their values are not changed.
+- A later row with an existing `transaction_id` is a correction, so the stored row is updated to the later values.
+- "Later" is decided by the file name: files are named `transactions_YYYYMMDD.csv`, so sorting the names sorts them by date.
+- Dates are stored as text in `YYYY-MM-DD` format. The daily loader also accepts `MM/DD/YYYY` and converts it.
+- All transactions are in USD. `amount` is always positive, and `transaction_type` (`CREDIT` or `DEBIT`) gives the direction.
+- Customer, account, branch and transaction IDs are stable business keys, so the star schema uses them directly (no surrogate keys).
+- `banking.db` is the trusted relational state. `analytics.db` is derived from it and can always be rebuilt.
+- The earlier pipeline's only run-summary output is `output/dq/DQsummary.csv`, so there is no separate summary folder.
 
-- The supplied CSV files are the authoritative reference data for customers, branches, and accounts.
-- Only the 10 valid transactions produced by the Week 3 pipeline are loaded.
-- Transaction amounts are stored as SQLite REAL values.
-- Transaction dates are stored as text using the `YYYY-MM-DD` format inherited from the validated Week 3 output.
-- Transaction currency is expected to be USD based on the Week 3 validation rules and supplied data.
-- Customer, branch, account, and transaction identifiers are treated as stable business keys.
-- SQLite is sufficient for this local assignment and does not require a separate database server.
+## Known Limitations
 
----
+- **Corrections are ordered by file name, not by event time.** If a file were renamed so its date no longer matches its contents, the stale-file guard would compare the wrong order.
+- **Only the latest value is kept.** When a correction updates a row, the old value is overwritten, so `banking.db` has no history of changes. History tracking (SCD Type 2) was out of scope this week. The old and new values are shown in `evidence/week_5/correction_evidence.txt`.
+- **`analytics.db` is rebuilt completely each time.** That keeps it simple and repeatable, but it would not suit very large data.
+- **`SUM(amount)` is not a balance.** The data has no opening balances, so net cash flow only covers the loaded transactions.
+- **The stages are run by hand, in the order shown in Run Order.** There is no one-command orchestrator, which this week did not require.
+- **Small, local data.** The pipeline reads local CSV files with pandas and uses SQLite, which is fine for this dataset but not for production banking workloads. A production system would also need security, backups and monitoring.
+- **Rebuilding `banking.db` resets it to the 10 initial rows.** The daily files must be loaded again after `build_database`.
 
-## Known Limitations and Future Improvements
+## Concept Questions
 
-### Limitations
+### 1. What is the grain of `fact_transaction`, and why must it be defined before building the table?
 
-**Small dataset**
+The grain is one row for one banking transaction. Every row in `fact_transaction` is exactly one transaction, and `transaction_id` is the primary key.
 
-The database contains only a small number of records. Because of this, query execution time is not representative of a production banking workload.
+It has to be decided first because the grain controls everything else in the table: which columns belong in it, which dimensions it can join to, and what a count or a sum actually means. If the grain were unclear, a table could mix rows of different kinds (a transaction in one row, a daily total in another), and then counts and totals would give wrong answers. With the grain fixed, `COUNT(*)` is the number of transactions, and a duplicate transaction is simply not allowed.
 
-The query-plan investigation therefore focuses on SQLite's chosen access strategy rather than claiming measurable performance gains.
+### 2. What is the difference between a full load and the incremental approach you implemented?
 
-**SQLite scale**
+A full load deletes everything and rebuilds the whole database from the source files. That is what `build_database` and `build_analytics` do. It is simple, but it throws away changes made since and has to reprocess all the data.
 
-SQLite is appropriate for this local assignment, but a production banking system would require stronger operational infrastructure, concurrency management, security controls, backup strategies, and monitoring.
+The incremental load keeps the existing `banking.db` and applies only the new daily file. New transaction IDs are inserted, and IDs that already exist are updated with the corrected values. Rows that did not change are left alone. Each run reports how many rows were inserted, updated, unchanged, stale or rejected, so it is clear exactly what changed.
 
-### Future Improvements
+### 3. Why is `INSERT OR IGNORE` not sufficient for the correction scenario in this assignment?
 
-Possible future improvements include:
-- adding more realistic transaction history
-- adding indexes based on real production query patterns
-- adding additional database-level validation rules
-- introducing database migrations
-- adding more comprehensive automated SQL-result tests
-- measuring query performance using a significantly larger dataset
+`INSERT OR IGNORE` skips a row when its `transaction_id` already exists. In this assignment a later row with an existing ID is a correction, so the stored value must change. With `INSERT OR IGNORE` the correction would be silently thrown away and the old, wrong value would stay. For example, T1001 would remain 500.0 instead of becoming 550.0. An UPSERT (`ON CONFLICT ... DO UPDATE`) inserts new IDs and updates existing ones, which is the behavior needed here.
 
----
+### 4. What specifically makes your implementation safe to rerun?
 
-## Week 4 Engineering Summary
+Three things work together:
+- **`transaction_id` is the primary key**, so the database cannot hold two rows with the same ID. A rerun can never create duplicate business transactions.
+- **The write is an UPSERT**, so a row that already exists is updated in place instead of inserted again. Rerunning a file leaves the same data (the rerun evidence shows 0 inserted, 0 updated and still 20 rows).
+- **The stale-file guard** only allows an update when the incoming file is the same as or newer than the file that wrote the stored row (`WHERE excluded.source_file >= bank_transaction.source_file`). So rerunning an older file cannot reverse a newer correction. In the rerun, `transactions_20260907.csv` reports `skipped_stale=1` and T4002 keeps its corrected value of 55.0.
 
-Week 4 extends the validated Week 3 ETL pipeline into a relational database layer.
+### 5. In your model, what is a fact and what is a dimension?
 
-The main engineering principles demonstrated are:
+A fact is a measurable event. In my model it is `fact_transaction`: each row is one banking transaction, with its `amount` as the measure and keys that point to the dimensions. Facts are what we count and sum.
 
-```text
-Validate first
-     ↓
-Store relationally
-     ↓
-Protect with constraints
-     ↓
-Test actual database behavior
-     ↓
-Analyze with SQL
-     ↓
-Investigate query plans
-     ↓
-Document evidence
-```
+A dimension describes the context of the event: who, which account, where and when. In my model these are `dim_customer`, `dim_account`, `dim_branch` and `dim_date`. They hold descriptive columns such as customer name, account type, branch city or day name, and we use them to group and filter the facts (for example, total amount by branch).
 
-The final database contains:
-- 6 customers
-- 3 branches
-- 10 accounts
-- 10 valid transactions
+## Author
 
-The project demonstrates not only that the database can be built, but also that its relationships, constraints, SQL analysis, and indexing decisions can be tested and supported with evidence.
+Zoya Haider
