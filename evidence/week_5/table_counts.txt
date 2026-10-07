@@ -1,0 +1,13 @@
+﻿--- OPERATIONAL DATABASE (banking.db) ---
+account: 10 rows
+bank_transaction: 20 rows
+branch: 3 rows
+customer: 6 rows
+
+--- ANALYTICAL DATABASE (analytics.db) ---
+dim_account: 10 rows
+dim_branch: 3 rows
+dim_customer: 6 rows
+dim_date: 4 rows
+fact_transaction: 20 rows
+

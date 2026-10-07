@@ -1,0 +1,10 @@
+transactions_20260907.csv: inserted=0, updated=0, unchanged=3, skipped_stale=1, rejected=0
+transactions_20260908.csv: inserted=0, updated=0, unchanged=4, skipped_stale=0, rejected=0
+transactions_20260909.csv: inserted=0, updated=0, unchanged=4, skipped_stale=0, rejected=0
+
+Total transactions in bank_transaction: 20
+
+AFTER rerun (second pass over all three daily files)
+bank_transaction rows: 20
+T1001 (amount, source_file): (550.0, 'transactions_20260908.csv')
+T4002 (amount, source_file): (55.0, 'transactions_20260909.csv')
