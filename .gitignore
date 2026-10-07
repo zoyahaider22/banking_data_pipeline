@@ -2,3 +2,6 @@
 __pycache__/
 *.pyc
 .pytest_cache/
+
+# Generated scenario outputs (regenerate with: python -m src.ingestion.run_test_scenario <name>)
+tests/fixtures/test_scenarios/*/output/

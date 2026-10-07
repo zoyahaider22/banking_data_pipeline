@@ -1,0 +1,31 @@
+﻿============================= test session starts =============================
+platform win32 -- Python 3.11.3, pytest-9.1.1, pluggy-1.6.0 -- C:\Users\zoyah\OneDrive\Desktop\week4_banking_database\.venv\Scripts\python.exe
+cachedir: .pytest_cache
+rootdir: C:\Users\zoyah\OneDrive\Desktop\week4_banking_database
+collecting ... collected 23 items
+
+tests/test_validation.py::test_valid_amount_accepts_a_normal_positive_number PASSED [  4%]
+tests/test_validation.py::test_valid_amount_rejects_non_numeric_text PASSED [  8%]
+tests/test_validation.py::test_valid_amount_rejects_negative_and_zero PASSED [ 13%]
+tests/test_validation.py::test_valid_amount_rejects_scientific_notation PASSED [ 17%]
+tests/test_validation.py::test_valid_date_accepts_a_correctly_formatted_real_date PASSED [ 21%]
+tests/test_validation.py::test_valid_date_rejects_an_impossible_calendar_date PASSED [ 26%]
+tests/test_validation.py::test_valid_date_rejects_non_zero_padded_dates PASSED [ 30%]
+tests/test_validation.py::test_valid_date_rejects_wrong_separator PASSED [ 34%]
+tests/test_validation.py::test_valid_currency_accepts_usd PASSED         [ 39%]
+tests/test_validation.py::test_valid_currency_rejects_other_currencies PASSED [ 43%]
+tests/test_validation.py::test_valid_transaction_type_accepts_credit_and_debit PASSED [ 47%]
+tests/test_validation.py::test_valid_transaction_type_rejects_anything_else PASSED [ 52%]
+tests/test_validation.py::test_missing_value_detects_blank_string PASSED [ 56%]
+tests/test_validation.py::test_missing_value_detects_whitespace_only_string PASSED [ 60%]
+tests/test_validation.py::test_missing_value_accepts_a_real_value_as_not_missing PASSED [ 65%]
+tests/test_pipeline.py::test_extract_and_validate_together_on_a_small_file PASSED [ 69%]
+tests/test_pipeline.py::test_a_bad_file_does_not_block_a_good_file PASSED [ 73%]
+tests/test_pipeline.py::test_original_data_still_produces_known_results PASSED [ 78%]
+tests/test_pipeline.py::test_pipeline_creates_dq_summary_and_log PASSED  [ 82%]
+tests/test_pipeline.py::test_all_files_rejected_is_logged_and_reported PASSED [ 86%]
+tests/test_pipeline.py::test_no_matching_files_is_logged_and_reported PASSED [ 91%]
+tests/test_pipeline.py::test_multiple_errors_are_preserved_for_one_row PASSED [ 95%]
+tests/test_pipeline.py::test_cross_file_duplicate_ids_are_invalid PASSED [100%]
+
+============================= 23 passed in 2.13s ==============================

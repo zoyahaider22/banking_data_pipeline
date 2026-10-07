@@ -1,0 +1,16 @@
+2026-10-06 19:10:04,050 - INFO - Pipeline started.
+2026-10-06 19:10:04,051 - INFO - Input folder: C:\Users\zoyah\OneDrive\Desktop\week4_banking_database\data\raw
+2026-10-06 19:10:04,051 - INFO - Validated data folder: C:\Users\zoyah\OneDrive\Desktop\week4_banking_database\data\validated
+2026-10-06 19:10:04,051 - INFO - DQ summary folder: C:\Users\zoyah\OneDrive\Desktop\week4_banking_database\output\dq
+2026-10-06 19:10:04,051 - INFO - Log folder: C:\Users\zoyah\OneDrive\Desktop\week4_banking_database\output\logs
+2026-10-06 19:10:04,051 - INFO - Output folder: None
+2026-10-06 19:10:04,052 - INFO - Starting extraction.
+2026-10-06 19:10:04,226 - INFO - Extraction completed: 24 records read from 3 file(s).
+2026-10-06 19:10:04,227 - INFO - File read successfully: BR001_20260906_TRANSACTION.csv with 8 data row(s).
+2026-10-06 19:10:04,227 - INFO - File read successfully: BR002_20260906_TRANSACTION.csv with 8 data row(s).
+2026-10-06 19:10:04,227 - INFO - File read successfully: BR003_20260906_TRANSACTION.csv with 8 data row(s).
+2026-10-06 19:10:04,229 - INFO - Starting validation.
+2026-10-06 19:10:04,240 - INFO - Validation completed.
+2026-10-06 19:10:04,241 - INFO - Starting output writing.
+2026-10-06 19:10:04,261 - INFO - Output files written successfully.
+2026-10-06 19:10:04,262 - INFO - Pipeline completed successfully. Total: 24, Valid: 10, Invalid: 14
