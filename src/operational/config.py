@@ -12,3 +12,4 @@ ACCOUNTS_FILE = DATA_DIR / "reference" / "accounts.csv"
 VALID_TRANSACTIONS_FILE = DATA_DIR / "validated" / "valid_transactions.csv"
 
 DATABASE_FILE = BASE_DIR / "database" / "banking.db"
+ANALYTICS_DATABASE_FILE = BASE_DIR / "database" / "analytics.db"
