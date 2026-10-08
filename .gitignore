@@ -5,3 +5,4 @@ __pycache__/
 
 # Generated scenario outputs (regenerate with: python -m src.ingestion.run_test_scenario <name>)
 tests/fixtures/test_scenarios/*/output/
+data/generated/

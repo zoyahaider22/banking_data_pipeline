@@ -1,0 +1,28 @@
+Rows loaded: 100000
+root
+ |-- transaction_id: string (nullable = true)
+ |-- account_id: string (nullable = true)
+ |-- transaction_date: date (nullable = true)
+ |-- transaction_type: string (nullable = true)
+ |-- amount: double (nullable = true)
+ |-- currency: string (nullable = true)
+
+High value (>= 500.0): 4294
+=== By transaction type ===
++----------------+-----------------+------------+----------+
+|transaction_type|transaction_count|total_amount|avg_amount|
++----------------+-----------------+------------+----------+
+|          CREDIT|            55376|  8194376.73|    147.98|
+|           DEBIT|            44624|  6691932.39|    149.96|
++----------------+-----------------+------------+----------+
+
+=== By branch (join to account) ===
++---------+-----------------+------------+-------------+
+|branch_id|transaction_count|gross_amount|net_cash_flow|
++---------+-----------------+------------+-------------+
+|    BR001|            30089|  4480395.24|    477576.14|
+|    BR002|            30035|  4410875.65|    418614.85|
+|    BR003|            39876|  5995038.23|    606253.35|
++---------+-----------------+------------+-------------+
+
+Branch counts add up to: 100000
