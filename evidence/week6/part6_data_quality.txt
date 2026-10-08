@@ -1,0 +1,10 @@
+=== Data quality checks ===
+PASS  Null transaction IDs: 0 bad record(s)
+PASS  Null account IDs (transactions): 0 bad record(s)
+PASS  Null amounts: 0 bad record(s)
+PASS  Duplicate transaction IDs: 0 bad record(s)
+PASS  Transactions referencing nonexistent accounts: 0 bad record(s)
+PASS  Accounts referencing nonexistent customers: 0 bad record(s)
+PASS  Accounts referencing nonexistent branches: 0 bad record(s)
+
+7 of 7 checks passed

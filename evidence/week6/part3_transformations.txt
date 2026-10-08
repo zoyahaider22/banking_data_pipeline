@@ -1,0 +1,40 @@
+root
+ |-- transaction_id: string (nullable = true)
+ |-- account_id: string (nullable = true)
+ |-- transaction_date: date (nullable = true)
+ |-- transaction_type: string (nullable = true)
+ |-- amount: double (nullable = true)
+ |-- currency: string (nullable = true)
+ |-- source_file: string (nullable = true)
+
+Transactions           : 20
+CREDIT rows            : 11
+High value (>= 500.0): 3
+Gross amount           : 4735.5
+Net cash flow          : 3384.5
+
+Reporting columns + derived signed_amount:
++--------------+----------+----------------+----------------+------+-------------+
+|transaction_id|account_id|transaction_date|transaction_type|amount|signed_amount|
++--------------+----------+----------------+----------------+------+-------------+
+|         T1001|     A1001|      2026-09-06|          CREDIT| 550.0|        550.0|
+|         T1002|     A1002|      2026-09-06|           DEBIT| 125.5|       -125.5|
+|         T1007|     A1007|      2026-09-06|           DEBIT|  40.0|        -40.0|
+|         T2001|     A2001|      2026-09-06|          CREDIT| 900.0|        900.0|
+|         T2005|     A2005|      2026-09-06|          CREDIT| 225.0|        225.0|
+|         T2007|     A2007|      2026-09-06|           DEBIT|  60.0|        -60.0|
+|         T3001|     A3001|      2026-09-06|          CREDIT|1000.0|       1000.0|
+|         T3002|     A3002|      2026-09-06|           DEBIT| 200.0|       -200.0|
+|         T3004|     A3004|      2026-09-06|          CREDIT| 350.0|        350.0|
+|         T3007|     A3007|      2026-09-06|           DEBIT|  25.0|        -25.0|
+|         T4001|     A1001|      2026-09-07|          CREDIT| 120.0|        120.0|
+|         T4002|     A2001|      2026-09-07|           DEBIT|  55.0|        -55.0|
+|         T4003|     A3001|      2026-09-07|          CREDIT| 275.0|        275.0|
+|         T4004|     A1002|      2026-09-07|           DEBIT|  35.0|        -35.0|
+|         T4005|     A2005|      2026-09-08|          CREDIT|  90.0|         90.0|
+|         T4006|     A3002|      2026-09-08|           DEBIT| 110.0|       -110.0|
+|         T4007|     A1007|      2026-09-08|          CREDIT|  60.0|         60.0|
+|         T4008|     A3004|      2026-09-09|          CREDIT| 410.0|        410.0|
+|         T4009|     A2007|      2026-09-09|           DEBIT|  25.0|        -25.0|
+|         T4010|     A3007|      2026-09-09|          CREDIT|  80.0|         80.0|
++--------------+----------+----------------+----------------+------+-------------+

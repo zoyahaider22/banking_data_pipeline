@@ -1,0 +1,78 @@
+
+=== customers ===
++-----------+--------------+--------------------------+----------------+
+|customer_id|customer_name |email                     |customer_segment|
++-----------+--------------+--------------------------+----------------+
+|C1001      |Maya Patel    |maya.patel@example.com    |RETAIL          |
+|C1002      |Daniel Kim    |daniel.kim@example.com    |RETAIL          |
+|C1003      |Sofia Martinez|sofia.martinez@example.com|PREMIUM         |
+|C1004      |Noah Williams |noah.williams@example.com |RETAIL          |
+|C1005      |Ava Thompson  |ava.thompson@example.com  |PREMIUM         |
++-----------+--------------+--------------------------+----------------+
+only showing top 5 rows
+root
+ |-- customer_id: string (nullable = true)
+ |-- customer_name: string (nullable = true)
+ |-- email: string (nullable = true)
+ |-- customer_segment: string (nullable = true)
+
+Row count: 6
+
+=== accounts ===
++----------+-----------+---------+------------+--------------+
+|account_id|customer_id|branch_id|account_type|account_status|
++----------+-----------+---------+------------+--------------+
+|A1001     |C1001      |BR001    |CHECKING    |ACTIVE        |
+|A1002     |C1001      |BR001    |SAVINGS     |ACTIVE        |
+|A1007     |C1002      |BR001    |CHECKING    |ACTIVE        |
+|A2001     |C1003      |BR002    |CHECKING    |ACTIVE        |
+|A2005     |C1003      |BR002    |SAVINGS     |ACTIVE        |
++----------+-----------+---------+------------+--------------+
+only showing top 5 rows
+root
+ |-- account_id: string (nullable = true)
+ |-- customer_id: string (nullable = true)
+ |-- branch_id: string (nullable = true)
+ |-- account_type: string (nullable = true)
+ |-- account_status: string (nullable = true)
+
+Row count: 10
+
+=== branches ===
++---------+---------------+--------+-----+
+|branch_id|branch_name    |city    |state|
++---------+---------------+--------+-----+
+|BR001    |Downtown Branch|Chicago |IL   |
+|BR002    |North Branch   |Evanston|IL   |
+|BR003    |Lake Branch    |Waukegan|IL   |
++---------+---------------+--------+-----+
+
+root
+ |-- branch_id: string (nullable = true)
+ |-- branch_name: string (nullable = true)
+ |-- city: string (nullable = true)
+ |-- state: string (nullable = true)
+
+Row count: 3
+
+=== transactions ===
++--------------+----------+----------------+----------------+------+--------+------------------------------+
+|transaction_id|account_id|transaction_date|transaction_type|amount|currency|source_file                   |
++--------------+----------+----------------+----------------+------+--------+------------------------------+
+|T1001         |A1001     |2026-09-06      |CREDIT          |550.0 |USD     |transactions_20260908.csv     |
+|T1002         |A1002     |2026-09-06      |DEBIT           |125.5 |USD     |BR001_20260906_TRANSACTION.csv|
+|T1007         |A1007     |2026-09-06      |DEBIT           |40.0  |USD     |BR001_20260906_TRANSACTION.csv|
+|T2001         |A2001     |2026-09-06      |CREDIT          |900.0 |USD     |BR002_20260906_TRANSACTION.csv|
+|T2005         |A2005     |2026-09-06      |CREDIT          |225.0 |USD     |BR002_20260906_TRANSACTION.csv|
++--------------+----------+----------------+----------------+------+--------+------------------------------+
+only showing top 5 rows
+root
+ |-- transaction_id: string (nullable = true)
+ |-- account_id: string (nullable = true)
+ |-- transaction_date: string (nullable = true)
+ |-- transaction_type: string (nullable = true)
+ |-- amount: double (nullable = true)
+ |-- currency: string (nullable = true)
+ |-- source_file: string (nullable = true)
+
+Row count: 20
