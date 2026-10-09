@@ -1,0 +1,72 @@
+============================= test session starts =============================
+platform win32 -- Python 3.11.3, pytest-9.1.1, pluggy-1.6.0 -- C:\Users\zoyah\OneDrive\Desktop\week4_banking_database\.venv\Scripts\python.exe
+cachedir: .pytest_cache
+rootdir: C:\Users\zoyah\OneDrive\Desktop\week4_banking_database
+collecting ... collected 58 items
+
+tests/spark/test_load_and_transform.py::test_input_row_counts PASSED     [  1%]
+tests/spark/test_load_and_transform.py::test_credit_count PASSED         [  3%]
+tests/spark/test_load_and_transform.py::test_credit_dataset_only_contains_credit PASSED [  5%]
+tests/spark/test_load_and_transform.py::test_high_value_threshold PASSED [  6%]
+tests/spark/test_load_and_transform.py::test_week5_corrections_are_present PASSED [  8%]
+tests/spark/test_load_and_transform.py::test_reporting_columns PASSED    [ 10%]
+tests/spark/test_load_and_transform.py::test_signed_amount_totals PASSED [ 12%]
+tests/spark/test_quality_and_joins.py::test_type_aggregation_known_values PASSED [ 13%]
+tests/spark/test_quality_and_joins.py::test_branch_aggregation_known_values PASSED [ 15%]
+tests/spark/test_quality_and_joins.py::test_no_duplicate_ids_in_real_data PASSED [ 17%]
+tests/spark/test_quality_and_joins.py::test_duplicate_ids_are_detected PASSED [ 18%]
+tests/spark/test_quality_and_joins.py::test_no_nulls_in_real_data PASSED [ 20%]
+tests/spark/test_quality_and_joins.py::test_nulls_are_detected PASSED    [ 22%]
+tests/spark/test_quality_and_joins.py::test_join_keeps_every_transaction PASSED [ 24%]
+tests/spark/test_quality_and_joins.py::test_no_orphans_in_real_data PASSED [ 25%]
+tests/spark/test_quality_and_joins.py::test_orphans_are_detected PASSED  [ 27%]
+tests/spark/test_quality_and_joins.py::test_all_data_quality_checks_pass PASSED [ 29%]
+tests/test_analytics.py::test_fact_row_count_matches_banking PASSED      [ 31%]
+tests/test_analytics.py::test_fact_has_no_duplicate_transaction_ids PASSED [ 32%]
+tests/test_analytics.py::test_fact_rows_reference_valid_dimensions PASSED [ 34%]
+tests/test_analytics.py::test_fact_takes_customer_and_branch_from_account PASSED [ 36%]
+tests/test_analytics.py::test_net_cash_flow_by_branch_known_result PASSED [ 37%]
+tests/test_analytics.py::test_rebuild_is_repeatable PASSED               [ 39%]
+tests/test_database_integrity.py::test_rejects_transaction_with_nonexistent_account PASSED [ 41%]
+tests/test_database_integrity.py::test_rejects_account_with_nonexistent_customer PASSED [ 43%]
+tests/test_database_integrity.py::test_rejects_duplicate_customer_id PASSED [ 44%]
+tests/test_database_integrity.py::test_rejects_negative_transaction_amount PASSED [ 46%]
+tests/test_database_integrity.py::test_rejects_missing_required_customer_name PASSED [ 48%]
+tests/test_database_integrity.py::test_expected_tables_exist PASSED      [ 50%]
+tests/test_database_integrity.py::test_foreign_keys_are_enabled PASSED   [ 51%]
+tests/test_database_integrity.py::test_expected_row_counts PASSED        [ 53%]
+tests/test_incremental_load.py::test_new_transactions_are_inserted PASSED [ 55%]
+tests/test_incremental_load.py::test_correction_updates_stored_value PASSED [ 56%]
+tests/test_incremental_load.py::test_rerun_does_not_increase_transaction_count PASSED [ 58%]
+tests/test_incremental_load.py::test_older_file_does_not_reverse_correction PASSED [ 60%]
+tests/test_pipeline.py::test_extract_and_validate_together_on_a_small_file PASSED [ 62%]
+tests/test_pipeline.py::test_a_bad_file_does_not_block_a_good_file PASSED [ 63%]
+tests/test_pipeline.py::test_original_data_still_produces_known_results PASSED [ 65%]
+tests/test_pipeline.py::test_pipeline_creates_dq_summary_and_log PASSED  [ 67%]
+tests/test_pipeline.py::test_all_files_rejected_is_logged_and_reported PASSED [ 68%]
+tests/test_pipeline.py::test_no_matching_files_is_logged_and_reported PASSED [ 70%]
+tests/test_pipeline.py::test_multiple_errors_are_preserved_for_one_row PASSED [ 72%]
+tests/test_pipeline.py::test_cross_file_duplicate_ids_are_invalid PASSED [ 74%]
+tests/test_validation.py::test_valid_amount_accepts_a_normal_positive_number PASSED [ 75%]
+tests/test_validation.py::test_valid_amount_rejects_non_numeric_text PASSED [ 77%]
+tests/test_validation.py::test_valid_amount_rejects_negative_and_zero PASSED [ 79%]
+tests/test_validation.py::test_valid_amount_rejects_scientific_notation PASSED [ 81%]
+tests/test_validation.py::test_valid_date_accepts_a_correctly_formatted_real_date PASSED [ 82%]
+tests/test_validation.py::test_valid_date_rejects_an_impossible_calendar_date PASSED [ 84%]
+tests/test_validation.py::test_valid_date_rejects_non_zero_padded_dates PASSED [ 86%]
+tests/test_validation.py::test_valid_date_rejects_wrong_separator PASSED [ 87%]
+tests/test_validation.py::test_valid_currency_accepts_usd PASSED         [ 89%]
+tests/test_validation.py::test_valid_currency_rejects_other_currencies PASSED [ 91%]
+tests/test_validation.py::test_valid_transaction_type_accepts_credit_and_debit PASSED [ 93%]
+tests/test_validation.py::test_valid_transaction_type_rejects_anything_else PASSED [ 94%]
+tests/test_validation.py::test_missing_value_detects_blank_string PASSED [ 96%]
+tests/test_validation.py::test_missing_value_detects_whitespace_only_string PASSED [ 98%]
+tests/test_validation.py::test_missing_value_accepts_a_real_value_as_not_missing PASSED [100%]
+
+============================== warnings summary ===============================
+.venv\Lib\site-packages\pyspark\testing\utils.py:127
+  C:\Users\zoyah\OneDrive\Desktop\week4_banking_database\.venv\Lib\site-packages\pyspark\testing\utils.py:127: FutureWarning: PySpark does not yet fully support pandas >= 3.0.0. Some features may not work correctly. It is recommended to use pandas < 3.0.0 for now.
+    require_minimum_pandas_version()
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+================== 58 passed, 1 warning in 592.04s (0:09:52) ==================

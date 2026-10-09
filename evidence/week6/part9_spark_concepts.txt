@@ -1,0 +1,33 @@
+=== Partitions ===
+banking.db transactions (20 rows)  : 8
+generated CSV (100000 rows)        : 2
+generated, after groupBy (summary) : 1
+
+=== Transformation (lazy, nothing runs yet) ===
+credit_transactions() -> filter() defined, result type: DataFrame
+
+=== Action (runs the whole plan) ===
+credits.count() -> 55376
+
+=== Shuffle: physical plan of the groupBy ===
+== Physical Plan ==
+AdaptiveSparkPlan isFinalPlan=true
++- == Final Plan ==
+   ResultQueryStage 2
+   +- *(3) Sort [transaction_type#10 ASC NULLS FIRST], true, 0
+      +- AQEShuffleRead coalesced
+         +- ShuffleQueryStage 1
+            +- Exchange rangepartitioning(transaction_type#10 ASC NULLS FIRST, 200), ENSURE_REQUIREMENTS, [plan_id=66]
+               +- *(2) HashAggregate(keys=[transaction_type#10], functions=[count(1), sum(amount#11), avg(amount#11)])
+                  +- AQEShuffleRead coalesced
+                     +- ShuffleQueryStage 0
+                        +- Exchange hashpartitioning(transaction_type#10, 200), ENSURE_REQUIREMENTS, [plan_id=39]
+                           +- *(1) HashAggregate(keys=[transaction_type#10], functions=[partial_count(1), partial_sum(amount#11), partial_avg(amount#11)])
+                              +- FileScan csv [transaction_type#10,amount#11] Batched: false, DataFilters: [], Format: CSV, Location: InMemoryFileIndex(1 paths)[file:/C:/Users/zoyah/OneDrive/Desktop/week4_banking_database/data/gene..., PartitionFilters: [], PushedFilters: [], ReadSchema: struct<transaction_type:string,amount:double>
++- == Initial Plan ==
+   Sort [transaction_type#10 ASC NULLS FIRST], true, 0
+   +- Exchange rangepartitioning(transaction_type#10 ASC NULLS FIRST, 200), ENSURE_REQUIREMENTS, [plan_id=25]
+      +- HashAggregate(keys=[transaction_type#10], functions=[count(1), sum(amount#11), avg(amount#11)])
+         +- Exchange hashpartitioning(transaction_type#10, 200), ENSURE_REQUIREMENTS, [plan_id=22]
+            +- HashAggregate(keys=[transaction_type#10], functions=[partial_count(1), partial_sum(amount#11), partial_avg(amount#11)])
+               +- FileScan csv [transaction_type#10,amount#11] Batched: false, DataFilters: [], Format: CSV, Location: InMemoryFileIndex(1 paths)[file:/C:/Users/zoyah/OneDrive/Desktop/week4_banking_database/data/gene..., PartitionFilters: [], PushedFilters: [], ReadSchema: struct<transaction_type:string,amount:double>

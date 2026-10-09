@@ -1,0 +1,32 @@
+=== DataFrame API version (summary_by_branch) ===
++---------+-----------------+------------+-------------+
+|branch_id|transaction_count|gross_amount|net_cash_flow|
++---------+-----------------+------------+-------------+
+|    BR001|                6|       930.5|        529.5|
+|    BR002|                6|      1355.0|       1075.0|
+|    BR003|                8|      2450.0|       1780.0|
++---------+-----------------+------------+-------------+
+
+=== Spark SQL version (spark.sql) ===
+
+SELECT
+    a.branch_id,
+    COUNT(*)      AS transaction_count,
+    SUM(t.amount) AS gross_amount,
+    SUM(CASE WHEN t.transaction_type = 'CREDIT' THEN t.amount ELSE -t.amount END)
+                  AS net_cash_flow
+FROM transactions t
+JOIN accounts a
+  ON t.account_id = a.account_id
+GROUP BY a.branch_id
+ORDER BY a.branch_id
+
++---------+-----------------+------------+-------------+
+|branch_id|transaction_count|gross_amount|net_cash_flow|
++---------+-----------------+------------+-------------+
+|    BR001|                6|       930.5|        529.5|
+|    BR002|                6|      1355.0|       1075.0|
+|    BR003|                8|      2450.0|       1780.0|
++---------+-----------------+------------+-------------+
+
+Rows that differ between the two versions: 0
