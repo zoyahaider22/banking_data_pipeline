@@ -1,11 +1,11 @@
 from pyspark.sql import functions as F
 
-from src.spark.load_data import get_spark, load_accounts, load_transactions
+from src.spark.load_data import BANKING_DB, get_spark, load_accounts, load_transactions
 from src.spark.transformations import add_signed_amount, prepare_transactions
 
 
-def get_transactions(spark):
-    return add_signed_amount(prepare_transactions(load_transactions(spark)))
+def get_transactions(spark, db_path=BANKING_DB):
+    return add_signed_amount(prepare_transactions(load_transactions(spark, db_path)))
 
 
 def summary_by_type(tx):

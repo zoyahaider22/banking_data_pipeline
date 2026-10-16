@@ -34,20 +34,20 @@ def load_table(spark, table, db_path=BANKING_DB):
     return spark.createDataFrame(rows, columns)
 
 
-def load_customers(spark):
-    return load_table(spark, "customer")
+def load_customers(spark, db_path=BANKING_DB):
+    return load_table(spark, "customer", db_path)
 
 
-def load_accounts(spark):
-    return load_table(spark, "account")
+def load_accounts(spark, db_path=BANKING_DB):
+    return load_table(spark, "account", db_path)
 
 
-def load_branches(spark):
-    return load_table(spark, "branch")
+def load_branches(spark, db_path=BANKING_DB):
+    return load_table(spark, "branch", db_path)
 
 
-def load_transactions(spark):
-    return load_table(spark, "bank_transaction")
+def load_transactions(spark, db_path=BANKING_DB):
+    return load_table(spark, "bank_transaction", db_path)
 
 
 if __name__ == "__main__":

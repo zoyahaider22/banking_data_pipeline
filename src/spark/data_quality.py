@@ -17,6 +17,10 @@ def count_duplicate_ids(df, column):
     return df.groupBy(column).count().filter(F.col("count") > 1).count()
 
 
+def count_non_positive(df, column):
+    return df.filter(F.col(column) <= 0).count()
+
+
 def count_orphans(child, parent, key):
     # Rows in child whose key has no match in parent (left anti join).
     # Null keys are skipped here because the null checks report them.
@@ -39,6 +43,7 @@ def run_checks(transactions, accounts, customers, branches):
          count_orphans(accounts, customers, "customer_id")),
         ("Accounts referencing nonexistent branches",
          count_orphans(accounts, branches, "branch_id")),
+        ("Non-positive amounts", count_non_positive(transactions, "amount")),
     ]
 
 

@@ -3,6 +3,7 @@ import pytest
 from src.spark.analytics import summary_by_branch, summary_by_type
 from src.spark.data_quality import (
     count_duplicate_ids,
+    count_non_positive,
     count_nulls,
     count_orphans,
     run_checks,
@@ -69,7 +70,16 @@ def test_orphans_are_detected(spark, accounts):
     assert count_orphans(df, accounts, "account_id") == 1
 
 
+def test_non_positive_amounts_are_detected(spark, transactions):
+    df = spark.createDataFrame(
+        [("T1", 100.0), ("T2", 0.0), ("T3", -5.0), ("T4", None)],
+        "transaction_id string, amount double",
+    )
+    assert count_non_positive(df, "amount") == 2
+    assert count_non_positive(transactions, "amount") == 0
+
+
 def test_all_data_quality_checks_pass(transactions, accounts, customers, branches):
     results = run_checks(transactions, accounts, customers, branches)
-    assert len(results) == 7
+    assert len(results) == 8
     assert all(bad_count == 0 for _, bad_count in results)
