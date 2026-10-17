@@ -76,11 +76,12 @@ All commands in this README are run from the repository root, using `python -m` 
 |   |-- validated/    valid_transactions.csv, invalid_transactions.csv
 |   |-- daily/        transactions_20260907.csv, _20260908.csv, _20260909.csv
 |   `-- generated/    synthetic_transactions.csv (Week 6, created by the generator, git-ignored)
+|-- orchestration/    banking_job.py (Week 7 Dagster job)
 |-- src/
 |   |-- ingestion/    config, extract, validate, pipeline, run_test_scenario
 |   |-- operational/  schema, database, loader, build_database, incremental_load, analysis, evidence scripts
 |   |-- analytics/    build_analytics.py
-|   `-- spark/        Week 6 PySpark code (see "Week 6: PySpark Processing")
+|   `-- spark/        Week 6 PySpark code (see "Week 6: PySpark Processing"), plus reporting.py (Week 7)
 |-- output/
 |   |-- dq/           DQsummary.csv
 |   `-- logs/         pipeline.log
@@ -88,13 +89,15 @@ All commands in this README are run from the repository root, using `python -m` 
 |-- sql/              operational_queries.sql, analytical_queries.sql
 |-- tests/
 |   |-- fixtures/     test_scenarios/ (T01-T10), daily_day1.csv, daily_day2.csv
+|   |-- orchestration/  Week 7 tests (test_reporting_logic.py, test_banking_job.py)
 |   |-- spark/        Week 6 pytest tests (conftest.py, test_load_and_transform.py, test_quality_and_joins.py)
 |   `-- test_*.py     validation, pipeline, database integrity, incremental load, analytics
 |-- evidence/
 |   |-- earlier_pipeline/   earlier pipeline test results, DQ summary, log
 |   |-- class_4/            integrity failures, SQL results, query plans
 |   |-- week_5/             incremental, correction, rerun, table counts, query results, pytest
-|   `-- week6/              Spark output evidence, parts 1-11
+|   |-- week6/              Spark output evidence, parts 1-11
+|   `-- week7/              Dagster scenario A-E screenshots (22 PNGs)
 `-- docs/
     |-- erd/          relational ERD
     `-- analytics/    star-schema and data-lineage diagrams
@@ -110,6 +113,7 @@ All commands in this README are run from the repository root, using `python -m` 
 | `data/daily` | Supplied Week 5 daily files (new transactions and corrections). Not edited. |
 | `data/generated` | Week 6 synthetic data created by `generate_transactions.py`. Not committed: the generator is committed instead. |
 | `src` | All code that does the work, one folder per stage. `src/spark` holds the Week 6 PySpark code. |
+| `orchestration` | The Week 7 Dagster job (`banking_job.py`). Its ops are thin wrappers over the code in `src/spark`. |
 | `output` | Artifacts generated each time the pipeline runs (DQ summary, log). |
 | `database` | The two persisted SQLite layers. `banking.db` is the trusted relational state, `analytics.db` is derived from it. |
 | `sql` | Operational and analytical SQL. |
@@ -131,7 +135,7 @@ Run these from the repository root, in this order. This is the Week 2-5 pipeline
 | 4 | `python -m src.operational.incremental_load` (again) | Rerun: nothing inserted or updated (unchanged 3, 4 and 4), the 0907 file reports `skipped_stale=1`. Total stays 20. |
 | 5 | `python -m src.analytics.build_analytics` | Deletes and rebuilds `database/analytics.db`: 6 customers, 10 accounts, 3 branches, 4 dates, 20 fact rows. |
 | 6 | `sql/analytical_queries.sql` | Seven queries against `analytics.db` (see Analytical SQL below). |
-| 7 | `python -m pytest -v` | 58 passed (41 from Weeks 2-5 plus 17 Spark tests). The Spark tests are slow on this machine, see Known Limitations. |
+| 7 | `python -m pytest -v` | 64 passed (41 from Weeks 2-5, 18 Spark tests and 5 Week 7 tests). The Spark tests are slow on this machine, see Known Limitations. |
 
 Step 2 rebuilds `banking.db` from scratch, so after it runs, the daily files must be loaded again (step 3). The Week 6 Spark code expects `banking.db` to be in its final state (20 transactions, after step 3). Edge-case scenarios from the earlier pipeline can be run with `python -m src.ingestion.run_test_scenario T01_new_branch` (T01 to T10). Each writes only to its own folder under `tests/fixtures/test_scenarios/`.
 
@@ -215,7 +219,7 @@ Week 6 repeats the loading, transformation, aggregation, join and data-quality w
 | `src/spark/transformations.py` | 3 | `prepare_transactions`, `credit_transactions`, `high_value_transactions`, `reporting_columns`, `add_signed_amount`. |
 | `src/spark/analytics.py` | 4 | Summaries by transaction type, account and branch. |
 | `src/spark/joins.py` | 5 | Joins all four tables, then activity by customer, branch and account type. |
-| `src/spark/data_quality.py` | 6 | The seven data-quality checks with a PASS/FAIL report. |
+| `src/spark/data_quality.py` | 6 | The data-quality checks with a PASS/FAIL report (seven in Week 6, eight since Week 7). |
 | `src/spark/parquet_io.py` | 7 | Parquet write and read-back attempt with row-count validation. |
 | `src/spark/generate_transactions.py` | 8 | Generates 100,000 synthetic transactions (fixed seed). |
 | `src/spark/large_data_analysis.py` | 8 | Loads the generated data and runs a filter, an aggregation and a join. |
@@ -234,13 +238,13 @@ Run from the repository root, after the Week 2-5 pipeline has produced the final
 | 4 | `python -m src.spark.transformations` | 20 transactions, 11 CREDIT, 3 high-value, gross 4735.5, net 3384.5. |
 | 5 | `python -m src.spark.analytics` | Summaries by type, account and branch (see below). |
 | 6 | `python -m src.spark.joins` | 20 joined rows, then activity by customer, branch and account type. |
-| 7 | `python -m src.spark.data_quality` | `7 of 7 checks passed`. |
+| 7 | `python -m src.spark.data_quality` | `8 of 8 checks passed` (it was `7 of 7` in Week 6, before the Week 7 non-positive amounts check). |
 | 8 | `python -m src.spark.parquet_io` | On the development machine: `PARQUET WRITE FAILED` (see Parquet below). |
 | 9 | `python -m src.spark.generate_transactions` | 10 accounts used, 100000 rows generated, written to `data/generated/`. |
 | 10 | `python -m src.spark.large_data_analysis` | 100000 rows loaded, 4294 high-value, branch counts adding up to 100000. |
 | 11 | `python -m src.spark.spark_concepts` | Partition counts 8, 2 and 1, a `count()` of 55376, and a plan with `Exchange` (shuffle) steps. |
 | 12 | `python -m src.spark.spark_sql_analysis` | DataFrame and SQL tables are identical: `Rows that differ between the two versions: 0`. |
-| 13 | `python -m pytest tests/spark -v` | 17 passed (takes several minutes on the development machine). |
+| 13 | `python -m pytest tests/spark -v` | 18 passed (takes several minutes on the development machine). |
 
 ### Part 2: types reviewed
 
@@ -287,7 +291,7 @@ Transactions do not carry a branch or a customer, so both are reached through th
 
 ### Part 6: data quality
 
-`data_quality.py` runs seven checks and prints PASS or FAIL with the number of bad records for each:
+`data_quality.py` ran seven checks in Week 6. Week 7 added an eighth, non-positive amounts, so it now runs eight and prints PASS or FAIL with the number of bad records for each:
 
 | Check | Method | Result |
 |---|---|---|
@@ -298,8 +302,9 @@ Transactions do not carry a branch or a customer, so both are reached through th
 | Transactions referencing nonexistent accounts | `left_anti` join to `account` | PASS, 0 |
 | Accounts referencing nonexistent customers | `left_anti` join to `customer` | PASS, 0 |
 | Accounts referencing nonexistent branches | `left_anti` join to `branch` | PASS, 0 |
+| Non-positive amounts (added in Week 7) | filter on `amount <= 0` (null amounts are reported by the null check, not here) | PASS, 0 |
 
-A `left_anti` join returns only the rows that have no match in the other table, which is how a missing reference is found. All seven pass because `banking.db` already enforces keys. To show that the checks do not simply pass because the data happens to be clean, the tests also run them on small deliberately broken DataFrames (a duplicated ID, null values, an account that does not exist) and confirm they are detected.
+A `left_anti` join returns only the rows that have no match in the other table, which is how a missing reference is found. All eight pass because `banking.db` already enforces keys and the `CHECK (amount > 0)` rule. To show that the checks do not simply pass because the data happens to be clean, the tests also run them on small deliberately broken DataFrames (a duplicated ID, null values, an account that does not exist) and confirm they are detected.
 
 ### Part 7: Parquet
 
@@ -349,13 +354,125 @@ A `left_anti` join returns only the rows that have no match in the other table, 
 
 Both versions return the same three rows (BR001, BR002, BR003), and the comparison of the two results reports `Rows that differ between the two versions: 0`.
 
+## Week 7: Dagster Orchestration
+
+Week 7 adds one Dagster job, `banking_job`, that runs the Week 6 Spark code as four steps with real dependencies: extract -> validate -> transform -> publish. `database/banking.db` stays the only data source. The job code is in `orchestration/banking_job.py`. The ops are thin wrappers: the banking work is done by the existing functions in `src/spark/`.
+
+| Op | Calls | What it does |
+|---|---|---|
+| `extract` | `load_transactions`, `load_accounts` (`load_data.py`) | Reads `banking.db` read-only and counts the transactions and accounts. Retries up to 2 times, 1 second apart. |
+| `validate` | `run_checks` (`data_quality.py`), `raise_if_checks_failed` (`reporting.py`) | Loads the four tables, runs the eight data-quality checks, logs PASS or FAIL for each, and raises an error if any check fails. |
+| `transform` | `get_transactions`, `summary_by_branch` (`analytics.py`) | Builds the branch summary with Spark and turns it into 3 plain rows. |
+| `publish` | `write_branch_report` (`reporting.py`) | Writes the branch summary to `output/reports/branch_summary.csv`. |
+
+### Prerequisites
+
+- Everything from Setup above: Python 3.11, Java 17, and the packages in `requirements.txt`.
+- `dagster==1.13.26` and `dagster-webserver==1.13.26`, which Week 7 added to `requirements.txt`. `pip install -r requirements.txt` installs them in the same `.venv`.
+- `database/banking.db` in its final state (20 transactions), as for Week 6.
+
+### DAGSTER_HOME
+
+Dagster keeps its own run data in the folder named by the `DAGSTER_HOME` environment variable (for example, the small step outputs are stored under `dagster_home\storage`). This project uses a folder outside the repository: `C:\Users\zoyah\dagster_home`. The variable must be set again in every new terminal:
+
+```powershell
+$env:DAGSTER_HOME = "C:\Users\zoyah\dagster_home"
+```
+
+### Launch the Dagster UI
+
+Run from the repository root, in its own terminal with the `.venv` active and `DAGSTER_HOME` set. Keep this terminal open: the UI stops when it is closed.
+
+```powershell
+dagster dev -f orchestration/banking_job.py
+```
+
+Open http://localhost:3000, select `banking_job`, open the Launchpad and click Launch Run. The Launchpad config has these fields, and the defaults are used if they are left unchanged:
+
+| Op | Config | Default |
+|---|---|---|
+| `extract` | `db_path` | `database/banking.db` |
+| `extract` | `fail_first_attempts` | `0` (used only to simulate a temporary failure) |
+| `publish` | `output_dir` | `output/reports` |
+
+Config edits made in the Launchpad are lost if the server is restarted.
+
+### How the job runs
+
+**Execution order.** The order comes from the dependencies in `banking_job()`: `publish(transform(validate(extract())))`. Each op takes the output of the op before it as its input, so Dagster cannot start an op until the op before it has succeeded. The job uses `in_process_executor`, so the steps run one at a time in a single process. The ops pass small dicts, not DataFrames: `extract` returns the database path and the row counts, `validate` returns the database path, `transform` returns the 3 branch rows, and `publish` returns the report path and totals.
+
+**Error handling.**
+
+- **Validation gate.** `validate` runs the eight data-quality checks from `data_quality.py` and logs PASS or FAIL for each one. `raise_if_checks_failed` then raises `DataQualityError` if any check found a bad record. `validate` logs `status=FAILED` with the check names and counts and raises the error again, so Dagster marks the step as failed. `transform` and `publish` depend on `validate`, so they never start. Measured in scenario B: `validate` failed with `1 data quality check(s) failed - Transactions referencing nonexistent accounts: 1`, `transform` and `publish` did not start, and the report folder was never created.
+- **Retry.** Only `extract` has a `RetryPolicy` (2 retries, 1 second apart). It is meant for a temporary problem such as a file that cannot be read for a moment. `validate` has no retry because a data-quality failure gives the same result every time the same data is checked, so a retry would only delay the failure. This is a design choice. The temporary failure in scenario E is simulated with the `fail_first_attempts` config value, not caused by a real fault.
+
+**Logging.** Every op logs `<op>: start` and `<op>: end, status=OK` with its row counts: transactions and accounts in `extract`, the number of checks passed in `validate`, the number of branch rows in `transform`, and the report path, rows, transaction count and net cash flow in `publish`. `validate` also logs each check by name. Only `validate` logs a `status=FAILED` line itself. If `extract` fails, the error is recorded in Dagster's own event log.
+
+**Where `banking.db` is read and where output is written.**
+
+- **Read:** `extract` (transactions and accounts), `validate` (all four tables) and `transform` (transactions and accounts) each read the database through `load_table` in `load_data.py`. It opens the file read-only (`mode=ro`), so the job cannot change `banking.db`. The path is the `db_path` config value, `database/banking.db` by default, and `extract` passes it on to the later ops.
+- **Written:** only `publish` writes business output, to `branch_summary.csv` in the `output_dir` config folder (`output/reports` by default). It creates the folder if needed and overwrites the same file on every run. Dagster's own run history and step outputs are stored separately, under `DAGSTER_HOME`.
+
+### Schedule
+
+`banking_job` has a daily schedule, defined in the code as `daily_banking_schedule` and shown in the Dagster UI as `banking_job_schedule` (no name was given, so Dagster named it after the job). The daily schedule (`banking_job_schedule`, cron `0 6 * * *`, execution time zone UTC) is defined in code with default status STOPPED. I did not enable it. The Dagster schedule page shows "Schedule has never run", so no scheduled run was created, and every run in this submission was launched manually from the Launchpad. Because the schedule was never enabled, its automatic triggering was not tested. No time zone is set in the code, so Dagster uses UTC. Dagster only evaluates schedules while its daemon is running, which `dagster dev` starts together with the UI.
+
+### Week 7 tests
+
+Run from the repository root with `python -m pytest`. The job tests copy `banking.db` into a temporary folder and run on the copy, so the source database is never changed. The tests call the production functions and the job itself, not a rewritten version of the calculations.
+
+| Command | Tests | Measured time |
+|---|---|---|
+| `python -m pytest tests/orchestration/test_reporting_logic.py -q` | 3 | 0.97 s (0.81 s in an earlier run), no Spark |
+| `python -m pytest tests/orchestration/test_banking_job.py -k succeeds -q` | 1 | 269.49 s (4 min 29 s) |
+| `python -m pytest tests/orchestration/test_banking_job.py -k validation_failure -q` | 1 | 420.09 s (7 min) |
+| `python -m pytest` (full suite) | 64 | 3598.72 s (59 min 58 s), 64 passed |
+
+- **`test_reporting_logic.py` (valid, bad and safe rerun):** valid data passes the gate and the report has the known totals (3 rows, 20 transactions, net cash flow 3384.5); bad data raises `DataQualityError` and the message names the failed check; running the report twice overwrites it with identical bytes and leaves one file.
+- **`test_job_succeeds_on_isolated_copy_and_publishes_report`:** runs the real job with `execute_in_process` on a copy of `banking.db` and asserts success, the publish result (3 rows, 20 transactions, net 3384.5) and that the report file exists.
+- **`test_validation_failure_blocks_publish`:** runs the job on a copy that has an orphan transaction (T9999 pointing to account A9999) and asserts that the run failed, that the only failed step is `validate`, that the only successful step is `extract`, and that the output folder was never created. This is the proof that the report step does not run after validation fails.
+- **`test_non_positive_amounts_are_detected` (in `tests/spark/test_quality_and_joins.py`):** covers the eighth data-quality check added this week.
+
+The full suite took about 10 minutes before Week 7 (58 tests, 592 s) and about 60 minutes in the Week 7 run. The two job tests took about 12 minutes when run on their own, which does not account for the whole increase. The cause was not determined.
+
+### Safe reruns and run history
+
+Two different things are involved when the job is run again:
+
+- **Business-data idempotency:** running the job again on unchanged source data gives the same business result. `banking.db` is only read (`mode=ro`) and `publish` overwrites one report file, so the job cannot add rows to the database or create a second report. This follows from how the job is built.
+- **Dagster run history:** every run is recorded under `DAGSTER_HOME`, so the history grows with each run. This is Dagster's own record of what ran. It is separate from the banking data, and a longer history does not mean the business data changed.
+
+Scenario D measured this: before and after the second run the source still had 20 rows and 20 distinct transaction IDs, and the report still had 3 rows, 20 transactions and net cash flow 3384.5. The report file was byte-identical in this run (SHA-256 `457a405dcc3cb50a2f97668d7c6c12f78535f6147016148b54417851cd2349bf`).
+
+### Evidence for scenarios A-E
+
+The screenshots are in `evidence/week7/`. Run IDs are the first 8 characters of the run ID shown in the Dagster UI.
+
+| Scenario | Run | Result | Files in `evidence/week7/` |
+|---|---|---|---|
+| A. Successful run | `134effe1` | Success in 5m42s on `banking.db`. extract: 20 transactions, 10 accounts. validate: 8 checks passed. transform: 3 branch rows. publish: 3 rows, 20 transactions, net 3384.5. | `A_success_config`, `A_success_run_overview`, `A_success_validate_log`, `A_success_publish_log`, `A_success_report_csv` |
+| B. Validation failure | `85c3ad91` | Failure in 2m58s on a copy of `banking.db` with an orphan transaction (T9999 pointing to account A9999). extract succeeded, validate failed with `1 data quality check(s) failed - Transactions referencing nonexistent accounts: 1`, transform and publish did not start, and the report folder was never created. | `B_failure_launchpad_config`, `B_failure_run_overview`, `B_failure_validate_log`, `B_failure_publish_not_started`, `B_failure_no_report_folder` |
+| C. Recovery | `05b1a1fb` | T9999 was deleted from the copy (20 rows, 0 orphans). With the same config the run succeeded in 3m32s with the same report numbers as A. | `C_recovery_input_fixed`, `C_recovery_launchpad_config`, `C_recovery_run_overview`, `C_recovery_publish_log`, `C_recovery_report_csv` |
+| D. Safe rerun | `4c56e671` | Same source and config as C. Success in 2m36s. Source rows, report rows, report totals and report SHA-256 were the same before and after. | `D_rerun_baseline`, `D_rerun_launchpad_config`, `D_rerun_run_overview`, `D_rerun_after` |
+| E. Temporary failure and retry | `173160f1` | With `fail_first_attempts: 1` on the fixed copy `banking_bad.db` (report folder `dagster_test\reports`), attempt 1 raised `Simulated transient failure on attempt 1` and Dagster scheduled a retry after 1 second. Attempt 2 succeeded (20 transactions, 10 accounts). The run succeeded in 2m50s. | `E_retry_launchpad_config`, `E_retry_run_overview`, `E_retry_event_log` |
+
+- Scenarios B to E used a copy of the database, `banking_bad.db` in `C:\Users\zoyah\dagster_test`, and wrote the report to `C:\Users\zoyah\dagster_test\reports`, both outside the repository. Only scenario A ran on `database/banking.db`, and the job only reads that file. `database/banking.db` was never changed. The copy is not committed.
+- The orphan transaction was the only kind of bad data that could be planted. The database's own constraints already reject null, zero or negative amounts, duplicate transaction IDs and null account IDs, so those cases cannot exist in a copy of `banking.db`. The checks for them are tested on small broken DataFrames in `tests/spark/test_quality_and_joins.py`.
+- The gross amount (4735.5) is in the report CSV (`A_success_report_csv`), not in the publish log.
+- The failure in scenario E is simulated with a config value. It is not a real network or disk fault.
+
+### Incident note and Airflow comparison
+
+- `docs/week7/incident_runbook.md`: one-page incident and runbook note for a failed validation (symptom, detection, likely cause, recovery, safe rerun, escalation and limitations).
+- `docs/week7/airflow_vs_dagster.md`: short conceptual comparison of Airflow and Dagster (DAG and job, task and op, scheduler and daemon, retries, monitoring, backfills). Airflow was not installed, so that column is conceptual.
+
 ## Tests
 
 ```powershell
 python -m pytest -v
 ```
 
-58 tests, all passing. The Weeks 2-5 evidence is in `evidence/week_5/pytest_output.txt` and the full run including Spark is in `evidence/week6/part11_pytest_output.txt`.
+64 tests, all passing (the Week 7 full run: 64 passed in 3598.72 s). The Weeks 2-5 evidence is in `evidence/week_5/pytest_output.txt` and the Week 6 run including Spark (58 tests at that time) is in `evidence/week6/part11_pytest_output.txt`.
 
 | File | Tests | Covers |
 |---|---|---|
@@ -365,7 +482,9 @@ python -m pytest -v
 | `test_incremental_load.py` | 4 | new rows inserted, correction updates the value, rerun keeps the count, older file cannot reverse a correction |
 | `test_analytics.py` | 6 | fact count matches banking, no duplicate IDs, valid dimension keys, customer and branch from account, known net cash flow result, repeatable rebuild |
 | `tests/spark/test_load_and_transform.py` | 7 | input row counts (20, 10, 6, 3), known CREDIT count (11), CREDIT dataset contains only CREDIT, high-value count (3), the two Week 5 corrections (T1001 = 550.0, T4002 = 55.0), reporting columns, gross 4735.5 and net 3384.5 |
-| `tests/spark/test_quality_and_joins.py` | 10 | known aggregation results (by type and by branch), duplicate IDs (none in the real data, detected in a bad DataFrame), nulls (same two checks), join keeps all 20 transactions, no orphan references (and one is detected in a bad DataFrame), all seven DQ checks pass |
+| `tests/spark/test_quality_and_joins.py` | 11 | known aggregation results (by type and by branch), duplicate IDs (none in the real data, detected in a bad DataFrame), nulls (same two checks), join keeps all 20 transactions, no orphan references (and one is detected in a bad DataFrame), all eight DQ checks pass, and the Week 7 non-positive amounts check detects a bad amount |
+| `tests/orchestration/test_reporting_logic.py` | 3 | valid data passes the gate with known report totals, bad data raises `DataQualityError`, a rerun overwrites the report with identical bytes |
+| `tests/orchestration/test_banking_job.py` | 2 | runs the real Dagster job with `execute_in_process` on a copy of `banking.db`: a success that publishes the report, and a validation failure that blocks publish |
 
 `tests/spark/conftest.py` starts one SparkSession for the whole test run and loads the four tables from `banking.db` once, so the tests check the same loaders and functions the pipeline uses. The Spark tests only read `banking.db`.
 
@@ -413,7 +532,7 @@ Always use `python -m pytest`, not bare `pytest`. To run only the Spark tests: `
 - **Only the latest value is kept.** When a correction updates a row, the old value is overwritten, so `banking.db` has no history of changes. History tracking (SCD Type 2) was out of scope this week. The old and new values are shown in `evidence/week_5/correction_evidence.txt`.
 - **`analytics.db` is rebuilt completely each time.** That keeps it simple and repeatable, but it would not suit very large data.
 - **`SUM(amount)` is not a balance.** The data has no opening balances, so net cash flow only covers the loaded transactions.
-- **The stages are run by hand, in the order shown in Run Order.** There is no one-command orchestrator, which this week did not require.
+- **The Week 2-5 stages are run by hand, in the order shown in Run Order.** There is no one-command orchestrator for them. The Week 7 Dagster job orchestrates only the Spark steps (extract, validate, transform, publish) and does not run the Week 2-5 stages.
 - **Small, local data.** The pipeline reads local CSV files with pandas and uses SQLite, which is fine for this dataset but not for production banking workloads. A production system would also need security, backups and monitoring.
 - **Rebuilding `banking.db` resets it to the 10 initial rows.** The daily files must be loaded again after `build_database`.
 
@@ -425,6 +544,20 @@ Week 6 (Spark) limitations:
 - **Spark jobs on the `banking.db` tables are slow on the development machine.** Measured: each job on those DataFrames (built from Python rows) took about 11 seconds, even a plain `count()` on 20 rows, while jobs on the DataFrame read from the 100,000-row CSV took about 0.6 seconds. Shuffles, row count and the number of partitions did not explain it (a one-partition copy took the same time). The exact cause was not determined. As a result the full test suite (58 tests) takes about 10 minutes (592 seconds in the saved run), and the 17 Spark tests take several minutes. No caching or repartitioning was added, because those are out of scope.
 - **Windows noise in the terminal.** After a Spark script ends, Windows prints `SUCCESS: The process with PID ... has been terminated` lines. They are harmless.
 - **Spark reads `banking.db` through Python.** Spark cannot read SQLite directly without a JDBC driver, so tables are read with `sqlite3` and converted with `createDataFrame`. That is fine for these small tables, but it is not how Spark would read a large database.
+
+Week 7 (Dagster) limitations:
+
+- **The schedule was never enabled.** `banking_job_schedule` is defined with default status STOPPED and the Dagster UI shows "Schedule has never run". Its automatic triggering was therefore not tested; only the definition (cron `0 6 * * *`, target `banking_job`) was checked in the UI. Every run was launched manually from the Launchpad.
+- **The schedule time zone is UTC.** No time zone is set in the code, so Dagster uses UTC and the UI shows 06:00 UTC, not local time.
+- **The retry is simulated.** The temporary failure in scenario E is raised by the `fail_first_attempts` config value, not by a real network or disk fault. It proves that the retry policy on `extract` retries and then succeeds. Only `extract` has a retry policy.
+- **Only one kind of bad data was planted.** Scenario B used an orphan transaction because the database's own constraints reject the other kinds. The other checks are tested on small broken DataFrames, not through the Dagster job.
+- **Only `validate` logs a failed status itself.** If `extract`, `transform` or `publish` fails, the error is recorded in Dagster's event log, not by a `status=FAILED` line from the op. A real `extract` failure, such as a missing database file, was not tested.
+- **Spark steps are slow, and the cause was not determined.** Measured in scenario A on 20 transactions: `extract` 1m30s, `validate` 3m28s, `transform` 38s. The success test took 269.49 s and the validation-failure test 420.09 s, and durations varied between runs. The full suite took 3598.72 s (59m58s), against 592 s for the 58 tests before Week 7. The two job tests alone (about 12 minutes) do not account for that difference. These are observations only.
+- **Compute logs are not captured on Windows.** Dagster reports that compute log capture is disabled on Windows. The `context.log` lines from the ops still appear in the UI event log, which is where the scenario evidence comes from.
+- **Dagster warnings at startup.** `dagster dev` warns that `dev_command` is superseded by `dg dev`, and that there is no `dagster.yaml`, so Dagster uses `DAGSTER_HOME`. The job runs normally. PySpark also warns about pandas 3 (see Week 6 limitations).
+- **The Dagster UI must stay open and set up each time.** The UI stops when its terminal is closed, `DAGSTER_HOME` must be set again in every new terminal, and Launchpad config edits are lost if the server restarts.
+- **The report is a CSV, not Parquet.** The Week 6 Parquet write fails on Windows, so `publish` uses Python's `csv` module. It overwrites one file and keeps no history of earlier reports.
+- **The ops pass small dicts, not DataFrames.** `transform` converts the 3 branch rows with `collect()` before Dagster stores them. That is fine for 3 rows, but it would not suit a large result.
 
 ## Concept Questions
 
