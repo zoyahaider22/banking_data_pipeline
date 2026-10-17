@@ -1,6 +1,6 @@
 ﻿# Banking Data Pipeline
 
-An end-to-end banking data project. Raw branch transaction files are validated, trusted data is loaded into a relational SQLite database, daily corrections are applied incrementally, and a separate star-schema database is built for analysis (Weeks 2-5). In Week 6 the data processing and analysis are repeated with PySpark, starting from the trusted `banking.db`.
+An end-to-end banking data project. Raw branch transaction files are validated, trusted data is loaded into a relational SQLite database, daily corrections are applied incrementally, and a separate star-schema database is built for analysis (Weeks 2-5). In Week 6 the data processing and analysis are repeated with PySpark, starting from the trusted `banking.db`. In Week 7 a Dagster job runs the Spark steps in order (extract, validate, transform, publish), and a failed validation stops the job before the report is written.
 
 ## Architecture and Data Flow
 
@@ -34,6 +34,14 @@ src/spark/generate_transactions.py -> data/generated/synthetic_transactions.csv 
    |
    v
 src/spark/large_data_analysis.py   (100,000 synthetic transactions)
+
+database/banking.db  (read-only)
+   |
+   v
+orchestration/banking_job.py   (Week 7 Dagster job, reuses src/spark)
+   extract -> validate -> transform -> publish
+   a failed validation stops the job: transform and publish never run
+   publish writes output/reports/branch_summary.csv
 ```
 
 Diagrams: `docs/erd/ERD.md` (relational ERD), `docs/analytics/star_schema.md` (star schema), `docs/analytics/data_lineage.md` (end-to-end lineage).
@@ -46,10 +54,11 @@ Diagrams: `docs/erd/ERD.md` (relational ERD), `docs/analytics/star_schema.md` (s
 | 4. Analytical build | `src/analytics/build_analytics.py` | `database/banking.db` only | `database/analytics.db` |
 | 5. Analysis | `sql/analytical_queries.sql` | `database/analytics.db` | query results |
 | 6. Spark processing (Week 6) | `src/spark/` | `database/banking.db` (read-only) | printed results, `evidence/week6/` |
+| 7. Orchestration (Week 7) | `orchestration/banking_job.py` | `database/banking.db` (read-only) | `output/reports/branch_summary.csv`, Dagster run history under `DAGSTER_HOME`, `evidence/week7/` |
 
 ## Setup
 
-Requirements: Python 3.11, Java 17 (needed by Spark), and the packages in `requirements.txt` (`pandas`, `pytest`, `pyspark`). `sqlite3` is part of the Python standard library.
+Requirements: Python 3.11, Java 17 (needed by Spark), and the packages in `requirements.txt` (`pandas`, `pytest`, `pyspark`, `dagster`, `dagster-webserver`). `sqlite3` is part of the Python standard library.
 
 Versions used for this project: Python 3.11.3, Java OpenJDK 17.0.20.1 (Eclipse Temurin), PySpark 4.2.0 (runs Spark 4.2.0). They are recorded by `src/spark/check_environment.py` (`evidence/week6/part1_environment.txt`).
 
