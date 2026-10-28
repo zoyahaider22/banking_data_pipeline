@@ -1,0 +1,4 @@
+transaction_id,account_id,transaction_date,transaction_type,amount,currency
+T1001,A1001,2026-09-06,CREDIT,550.00,USD
+T7001,A1001,2026-09-07,CREDIT,120.00,USD
+T7004,A1002,2026-09-08,CREDIT,75.00,USD

@@ -1,6 +1,6 @@
 ﻿# Banking Data Pipeline
 
-An end-to-end banking data project. Raw branch transaction files are validated, trusted data is loaded into a relational SQLite database, daily corrections are applied incrementally, and a separate star-schema database is built for analysis (Weeks 2-5). In Week 6 the data processing and analysis are repeated with PySpark, starting from the trusted `banking.db`. In Week 7 a Dagster job runs the Spark steps in order (extract, validate, transform, publish), and a failed validation stops the job before the report is written.
+An end-to-end banking data project. Raw branch transaction files are validated, trusted data is loaded into a relational SQLite database, daily corrections are applied incrementally, and a separate star-schema database is built for analysis (Weeks 2-5). In Week 6 the data processing and analysis are repeated with PySpark, starting from the trusted `banking.db`. In Week 7 a Dagster job runs the Spark steps in order (extract, validate, transform, publish), and a failed validation stops the job before the report is written. In Week 8 a separate capstone pipeline (landing, bronze, silver, gold and exceptions, with audit tables) lives in `src/capstone/`, and its documents are in `docs/capstone/`.
 
 ## Architecture and Data Flow
 
@@ -131,6 +131,8 @@ All commands in this README are run from the repository root, using `python -m` 
 | `docs` | Design diagrams. |
 
 There is no `config/` folder: configuration lives in `src/ingestion/config.py` and `src/operational/config.py`, as it did in the earlier projects.
+
+Week 8 adds a `capstone` subfolder inside each of `data`, `src`, `sql`, `output`, `tests`, `docs` and `evidence`. It is described in the Week 8 section and is not repeated in the tree above.
 
 ## Run Order
 
@@ -475,6 +477,38 @@ The screenshots are in `evidence/week7/`. Run IDs are the first 8 characters of 
 - `docs/week7/incident_runbook.md`: one-page incident and runbook note for a failed validation (symptom, detection, likely cause, recovery, safe rerun, escalation and limitations).
 - `docs/week7/airflow_vs_dagster.md`: short conceptual comparison of Airflow and Dagster (DAG and job, task and op, scheduler and daemon, retries, monitoring, backfills). Airflow was not installed, so that column is conceptual.
 
+## Week 8: Integrated Banking Capstone
+
+Week 8 adds a capstone pipeline that takes branch transaction CSV files through Landing, Bronze, Silver and Gold, keeps rejected rows in Exceptions, and records every run in audit tables. A plain Python runner runs five steps in order: discover -> ingest -> validate -> transform -> publish. It uses its own database, `output/capstone/banking_capstone.db`; `database/banking.db` is not used. Earlier-week files were not changed: the capstone only imports the single-value checks from `src/ingestion/validate.py`, the constants from `src/ingestion/config.py` and the Spark helpers from `src/spark/load_data.py`.
+
+| Step | Code (`src/capstone/`) | What it does |
+|---|---|---|
+| discover | `discover.py` | Lists the files in `data/capstone/landing` named `BR<digits>_<YYYYMMDD>_TRANSACTION.csv`, reads branch ID and file date from the name and computes a SHA-256. Other files are listed as unrecognized. |
+| ingest | `ingest.py` | Loads every row into Bronze as received, with filename, branch ID, run ID and source row number. An identical file that was already processed is skipped. |
+| validate | `validate.py` | Bronze to Silver (accepted) and Exceptions (rejected, with all reasons). The first accepted `transaction_id` wins. Source rows must equal accepted plus rejected. |
+| transform | `transform.py` | Builds Gold (count and total per branch, date and type) with SQL and with PySpark, and compares them. |
+| publish | `publish.py` | Replaces the Gold table and `output/capstone/gold_branch_daily_summary.csv` only after the earlier steps succeeded. |
+| runner | `pipeline.py` | Runs the steps in order and records SUCCESS or FAILED with the failing step. |
+
+```powershell
+python -m src.capstone.pipeline
+python -m pytest tests/capstone -q
+```
+
+- Six scenarios were run on the real capstone database (normal input, bad rows, duplicates, late and corrected files, a failed run with recovery, the same inputs twice). All passed. End state: Silver 23 rows, Exceptions 16 rows, Gold 15 rows, Gold total 5436.0.
+- The 66 capstone tests passed in 58.08 s.
+- A run in a fresh copy of the repository (no `output` folder) with all 9 input files gave the same Silver, Exceptions, Gold and Gold CSV as the staged runs.
+- Main limitations: only an ingest-step failure was shown on the real database; there is no upsert (a correction to an accepted transaction is kept in Exceptions and changes nothing); the Gold table and the Gold CSV are not replaced as one unit; Spark steps took about 14 to 47 seconds per run for an undetermined reason. The full list is in `docs/capstone/README.md`.
+
+Documents and evidence:
+
+- `docs/capstone/README.md`: setup, commands, input contract, assumptions, technology choices and known limitations for Week 8.
+- `docs/capstone/DESIGN_DECISIONS.md`: duplicate policy, correction policy, idempotency strategy, SQL versus PySpark.
+- `docs/capstone/RUNBOOK.md`: normal run, rerun, failed-run diagnosis, recovery and read-only queries.
+- `docs/capstone/TEST_RESULTS.md`: scenario, expected, actual, result and evidence path.
+- `docs/capstone/architecture.svg`: data-flow diagram with the orchestrator.
+- `evidence/capstone/`: the screenshots cited in `TEST_RESULTS.md`.
+
 ## Tests
 
 ```powershell
@@ -498,6 +532,8 @@ python -m pytest -v
 `tests/spark/conftest.py` starts one SparkSession for the whole test run and loads the four tables from `banking.db` once, so the tests check the same loaders and functions the pipeline uses. The Spark tests only read `banking.db`.
 
 Always use `python -m pytest`, not bare `pytest`. To run only the Spark tests: `python -m pytest tests/spark -v`.
+
+Week 8 adds a separate suite of 66 tests in `tests/capstone/` (66 passed in 58.08 s with `python -m pytest tests/capstone -q`). Because `python -m pytest` starts from the repository root, it now also collects those tests: `python -m pytest --collect-only` reports 130 tests (64 + 66). The 64-test figure above is the Week 7 full run; the two suites have not been run together.
 
 ## Fixtures and Evidence
 
