@@ -1,6 +1,6 @@
 ﻿# Banking Data Pipeline
 
-An end-to-end banking data project. Raw branch transaction files are validated, trusted data is loaded into a relational SQLite database, daily corrections are applied incrementally, and a separate star-schema database is built for analysis (Weeks 2-5). In Week 6 the data processing and analysis are repeated with PySpark, starting from the trusted `banking.db`. In Week 7 a Dagster job runs the Spark steps in order (extract, validate, transform, publish), and a failed validation stops the job before the report is written. In Week 8 a separate capstone pipeline (landing, bronze, silver, gold and exceptions, with audit tables) lives in `src/capstone/`, and its documents are in `docs/capstone/`.
+An end-to-end banking data engineering project covering transaction ingestion, validation, relational data modelling, incremental loading, analytics, PySpark processing and Dagster orchestration (Weeks 2-7). Week 8 adds an Integrated Banking Capstone with Landing, Bronze, Silver, Gold, Exceptions and audit tables. The Week 8 CDP Readiness Extension builds on that capstone by creating a customer-level Customer 360 data product and exposing approved customer summaries through a read-only HTTP API using Python and SQLite.
 
 ## Architecture and Data Flow
 
@@ -43,6 +43,10 @@ orchestration/banking_job.py   (Week 7 Dagster job, reuses src/spark)
    a failed validation stops the job: transform and publish never run
    publish writes output/reports/branch_summary.csv
 ```
+This overview summarizes the Weeks 2–7 pipeline.
+The Week 8 Integrated Banking Capstone and CDP
+Readiness Extension architectures are documented
+in their respective sections below.
 
 Diagrams: `docs/erd/ERD.md` (relational ERD), `docs/analytics/star_schema.md` (star schema), `docs/analytics/data_lineage.md` (end-to-end lineage).
 
@@ -71,7 +75,10 @@ java -version
 
 `java -version` must report version 17. On Windows, Java 17 was installed from the Eclipse Temurin MSI installer with the "Add to PATH" and "Set JAVA_HOME" options, and VS Code was restarted so the terminal sees the new PATH. No Hadoop or winutils was installed (see Known Limitations).
 
-All commands in this README are run from the repository root, using `python -m` (for example `python -m pytest`). Running bare `pytest` fails with `No module named 'src'`.
+All commands are run from the repository root.
+Python modules and pytest commands use `python -m`
+where specified. Standalone Spark setup scripts are
+shown with direct Python script execution.
 
 ## Repository Structure
 
@@ -134,6 +141,44 @@ There is no `config/` folder: configuration lives in `src/ingestion/config.py` a
 
 Week 8 adds a `capstone` subfolder inside each of `data`, `src`, `sql`, `output`, `tests`, `docs` and `evidence`. It is described in the Week 8 section and is not repeated in the tree above.
 
+
+### CDP Readiness Extension Structure
+
+The Week 8 CDP Readiness Extension adds the following folders:
+
+```text
+data/
+└── customer360/
+    ├── customers.csv
+    └── accounts.csv
+
+sql/
+└── customer360/
+    └── schema.sql
+
+src/
+└── customer360/
+    ├── build_customer360.py
+    └── api_server.py
+
+tests/
+└── customer360/
+    └── test_api_server.py
+
+output/
+└── customer360/
+    ├── backups/
+    ├── customer_360.csv
+    └── customer360_exceptions.csv
+```
+
+Supporting documentation is maintained in the repository root:
+
+- `TEST_RESULTS.md`
+- `ARCHITECTURE.md`
+- `PRIVACY_AND_DESIGN.md`
+
+
 ## Run Order
 
 Run these from the repository root, in this order. This is the Week 2-5 pipeline; the Week 6 Spark scripts are listed in their own section below.
@@ -146,7 +191,7 @@ Run these from the repository root, in this order. This is the Week 2-5 pipeline
 | 4 | `python -m src.operational.incremental_load` (again) | Rerun: nothing inserted or updated (unchanged 3, 4 and 4), the 0907 file reports `skipped_stale=1`. Total stays 20. |
 | 5 | `python -m src.analytics.build_analytics` | Deletes and rebuilds `database/analytics.db`: 6 customers, 10 accounts, 3 branches, 4 dates, 20 fact rows. |
 | 6 | `sql/analytical_queries.sql` | Seven queries against `analytics.db` (see Analytical SQL below). |
-| 7 | `python -m pytest -v` | 64 passed (41 from Weeks 2-5, 18 Spark tests and 5 Week 7 tests). The Spark tests are slow on this machine, see Known Limitations. |
+| 7 | `python -m pytest -v` | Historical Week 7 baseline: 64 passed. See the Tests section for subsequent Week 8 results. |
 
 Step 2 rebuilds `banking.db` from scratch, so after it runs, the daily files must be loaded again (step 3). The Week 6 Spark code expects `banking.db` to be in its final state (20 transactions, after step 3). Edge-case scenarios from the earlier pipeline can be run with `python -m src.ingestion.run_test_scenario T01_new_branch` (T01 to T10). Each writes only to its own folder under `tests/fixtures/test_scenarios/`.
 
@@ -509,6 +554,284 @@ Documents and evidence:
 - `docs/capstone/architecture.svg`: data-flow diagram with the orchestrator.
 - `evidence/capstone/`: the screenshots cited in `TEST_RESULTS.md`.
 
+## Week 8: CDP Readiness Extension — Customer 360 and API
+
+The second part of the Week 8 assignment extends the Integrated Banking Capstone into a CDP-ready Customer 360 data product.
+
+The objective is to create one unified profile per customer using trusted Silver transactions and synthetic customer/account reference data, then expose approved customer summary metrics through a small read-only HTTP API.
+
+This extension reuses the existing capstone database:
+
+`output/capstone/banking_capstone.db`
+
+It is separate from the earlier `database/banking.db` and does not replace the existing branch-level Gold summary.
+
+### Architecture
+
+```text
+Week 8 Silver Transactions
+             |
+             v
+    Customer 360 Builder
+             ^
+             |
+    ---------------------
+    |                   |
+customers.csv       accounts.csv
+    |                   |
+    ---------------------
+             |
+             v
+     Data Validation
+             |
+       ---------------
+       |             |
+       v             v
+   Accepted       Exceptions
+   Customers      Rejected
+   and Accounts    Records
+       |
+       v
+   SQLite Database
+       |
+       v
+  customer_360 SQL View
+       |
+       |----------------------|
+       v                      v
+customer_360.csv       Read-only HTTP API
+                              |
+                              v
+                       JSON Responses
+```
+
+### Customer 360 Data Model
+
+The extension uses three related entities:
+
+`Customers → Accounts → Transactions`
+
+| Entity | Grain | Primary key |
+|---|---|---|
+| Customers | One row per customer | customer_id |
+| Accounts | One row per account | account_id |
+| Silver transactions | One row per accepted transaction | transaction_id |
+| Customer 360 Gold | One row per customer | customer_id |
+
+The customer identity key is `customer_id`. Accounts are connected to customers through `customer_id`, while transactions are connected to accounts through `account_id`.
+
+Customer records are not merged using names alone.
+
+### Input Files
+
+The extension uses two synthetic reference files:
+
+| File | Location | Purpose |
+|---|---|---|
+| `customers.csv` | `data/customer360/` | Customer identifiers, names and segments |
+| `accounts.csv` | `data/customer360/` | Account identifiers and customer ownership |
+
+The extension uses customer IDs C001–C007, reuses
+the 10 account IDs present in the Week 8 Capstone
+Silver transactions, and adds A9001 as a synthetic
+account for C003, who has no transactions.
+
+C003 represents a customer with one account and no transactions. Account A9999 is deliberately included with an unknown customer reference C999 to demonstrate orphan-account validation.
+
+Only synthetic data is used.
+
+### Customer 360 Gold Transformation
+
+The customer-level Gold data product is implemented as a SQLite SQL view named `customer_360`.
+
+It contains:
+
+- `customer_id`
+- `customer_name`
+- `account_count`
+- `transaction_count`
+- `total_transaction_amount`
+- `last_transaction_date`
+
+The SQL transformation uses separate account and transaction aggregations to avoid join fanout and inflated totals.
+
+`LEFT JOIN` preserves customers without transactions, while `COALESCE()` returns zero for their missing transaction counts and totals.
+
+The Gold CSV snapshot is generated at:
+
+`output/customer360/customer_360.csv`
+
+### Data Validation and Exceptions
+
+The extension validates:
+
+- Missing customer and account fields.
+- Duplicate customer IDs.
+- Duplicate account IDs.
+- Account references to unknown customers.
+- Accepted Silver transaction references to unknown extension accounts.
+
+Rejected records are retained in `customer360_exceptions` with source metadata, raw record information and rejection reasons.
+
+Relevant Week 8 transaction exceptions are also imported into the extension exception output.
+
+Exception CSV:
+
+`output/customer360/customer360_exceptions.csv`
+
+### Build Commands
+
+Run these commands from the repository root with the virtual environment activated.
+
+**1. Build Customer 360**
+
+```powershell
+python -m src.customer360.build_customer360
+```
+
+The builder:
+
+- Creates a SQLite database backup.
+- Applies the Customer 360 schema.
+- Loads synthetic customers and accounts.
+- Validates references and records exceptions.
+- Reuses accepted Silver transactions.
+- Reconciles Silver and Gold transaction counts and totals.
+- Exports Customer 360 and exception CSV snapshots.
+
+**2. Run Customer 360 API Tests**
+
+```powershell
+python -m pytest tests/customer360/test_api_server.py -v
+```
+
+**Observed result:**
+
+`6 passed in 0.75s`
+
+The API tests cover known customer lookups, a customer without transactions, unknown customer handling, rejection of POST requests and parameterized customer ID lookup.
+
+### Starting the Read-only API
+
+The extension uses Python's built-in `http.server` library. No Flask, FastAPI or commercial CDP platform is required.
+
+Start the server:
+
+```powershell
+python -m src.customer360.api_server
+```
+
+Server configuration:
+
+| Setting | Value |
+|---|---|
+| Host | `127.0.0.1` |
+| Port | `8765` |
+| HTTP method | GET |
+| Database | `banking_capstone.db` |
+
+Keep the server terminal open while testing.
+
+Available endpoint:
+
+```http
+GET /customers/<customer_id>/summary
+```
+
+Example URLs:
+
+```text
+http://127.0.0.1:8765/customers/C001/summary
+http://127.0.0.1:8765/customers/C002/summary
+http://127.0.0.1:8765/customers/C003/summary
+http://127.0.0.1:8765/customers/C999/summary
+```
+
+Known customers return HTTP 200 with JSON summary data.
+
+Unknown customers return HTTP 404:
+
+```json
+{
+  "error": "Customer not found"
+}
+```
+
+Write methods such as POST, PUT, PATCH and DELETE are rejected with HTTP 405.
+
+Stop the server using `Ctrl+C`.
+
+### Verified Build Results
+
+The observed successful build produced the following results:
+
+| Metric | Actual result |
+|---|---:|
+| Customers loaded | 7 |
+| Accounts loaded | 11 |
+| Silver transactions | 23 |
+| Customer 360 Gold rows | 7 |
+| Customer 360 exceptions | 17 |
+| Mapped Silver transactions | 23 |
+| Unmapped Silver transactions | 0 |
+| Gold transaction count | 23 |
+| Gold total transaction amount | 5436.00 |
+
+The 17 exception records consist of one orphan account and 16 imported Week 8 transaction exceptions.
+
+The Gold transaction count and amount were independently reconciled against mapped Silver transactions.
+
+### Rerun Safety
+
+The extension is designed to rebuild its own customer and account reference data without modifying the existing Week 8 Silver transactions or branch-level Gold summary.
+
+A database backup is created before each build.
+
+Rerun safety was verified by building Customer 360 twice with unchanged inputs and comparing the SHA-256 hashes of the Gold CSV.
+
+The before-and-after hashes were identical.
+
+This demonstrates that unchanged source data produces an identical Customer 360 business result.
+
+### Documentation and Evidence
+
+The extension includes the following supporting documents:
+
+| Document | Purpose |
+|---|---|
+| `TEST_RESULTS.md` | Test scenarios, expected and actual results, and verification evidence |
+| `ARCHITECTURE.md` | Architecture and data-flow explanation |
+| `PRIVACY_AND_DESIGN.md` | Identity matching, grain, privacy decisions and production limitations |
+
+Additional source files:
+
+| File | Responsibility |
+|---|---|
+| `sql/customer360/schema.sql` | Customer and account tables, exception table, indexes and Customer 360 SQL view |
+| `src/customer360/build_customer360.py` | Reference loading, validation, reconciliation and exports |
+| `src/customer360/api_server.py` | Local read-only HTTP API |
+| `tests/customer360/test_api_server.py` | API integration tests |
+
+### Privacy and Production Limitations
+
+The API binds only to localhost and uses read-only SQLite connections with parameterized SQL queries.
+
+Email addresses and full transaction histories are excluded from the API response.
+
+This is a local CDP-readiness demonstration, not a production Customer Data Platform.
+
+A real banking implementation would additionally require authentication, authorization, audit logging, customer consent and privacy controls, rate limiting, secure transport and production monitoring.
+
+The extension does not implement advanced cross-system identity resolution or historical customer attribute tracking using SCD Type 2.
+
+### Conclusion
+
+The Week 8 CDP Readiness Extension demonstrates how trusted banking transactions and customer/account reference data can be combined into a unified Customer 360 data product.
+
+It reuses the existing Integrated Banking Capstone, validates customer-account relationships, preserves exception evidence, independently reconciles Gold metrics, demonstrates safe reruns and exposes approved customer summaries through a read-only HTTP API.
+
+The implementation provides a practical demonstration of Customer 360 and CDP readiness using Python, SQLite, SQL and standard HTTP functionality.
+
 ## Tests
 
 ```powershell
@@ -533,7 +856,27 @@ python -m pytest -v
 
 Always use `python -m pytest`, not bare `pytest`. To run only the Spark tests: `python -m pytest tests/spark -v`.
 
-Week 8 adds a separate suite of 66 tests in `tests/capstone/` (66 passed in 58.08 s with `python -m pytest tests/capstone -q`). Because `python -m pytest` starts from the repository root, it now also collects those tests: `python -m pytest --collect-only` reports 130 tests (64 + 66). The 64-test figure above is the Week 7 full run; the two suites have not been run together.
+
+Week 8 Core adds 66 tests in `tests/capstone/` (66 passed in 58.08 seconds).
+
+The last recorded full-repository collection before the CDP Readiness Extension reported 130 tests (64 Week 7 baseline tests + 66 Week 8 Core tests).
+
+The CDP Readiness Extension adds 6 API integration tests in `tests/customer360/test_api_server.py`. These were executed separately:
+
+`python -m pytest tests/customer360/test_api_server.py -v`
+
+Result: 6 passed in 0.75 seconds.
+
+The complete repository test suite was executed after
+adding the Customer 360 extension:
+
+- 136 tests passed in 596.22 seconds (9 minutes 56 seconds).
+- 0 failed tests.
+- 1 non-fatal PySpark/pandas compatibility warning.
+
+This includes 64 Week 7 baseline tests, 66 Week 8
+Core tests and 6 Customer 360 API tests.
+
 
 ## Fixtures and Evidence
 
