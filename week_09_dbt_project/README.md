@@ -360,7 +360,19 @@ It checks out the repository, configures Python 3.11, installs the pinned depend
 dbt build --profiles-dir .
 ```
 
-**CI status:** Pending verification through an actual GitHub Actions pull request run.
+
+### GitHub Actions CI Result
+
+The GitHub Actions workflow was executed successfully through Pull Request #1.
+
+- Workflow: Week 9 dbt CI
+- Job: dbt-check
+- Trigger: pull_request
+- Result: Successful
+- Execution time: 15 seconds
+
+The workflow installed the project dependencies, configured the DuckDB profile and successfully executed `dbt build`.
+
 
 ## 11. Reproducibility and Limitations
 
