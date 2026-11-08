@@ -14,3 +14,5 @@ output/customer360/customer_360_before_rerun.csv
 
 # Generated Week 8 capstone database
 output/capstone/*.db
+# Local dbt logs
+/logs/

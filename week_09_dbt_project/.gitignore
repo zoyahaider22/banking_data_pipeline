@@ -1,0 +1,7 @@
+target/
+dbt_packages/
+logs/
+.venv/
+dev.duckdb
+profiles.yml
+.user.yml

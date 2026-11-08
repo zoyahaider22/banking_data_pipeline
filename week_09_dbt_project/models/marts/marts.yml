@@ -1,0 +1,44 @@
+
+version: 2
+
+models:
+  - name: dim_accounts
+    description: >
+      Account dimension containing one row per bank account,
+      enriched with customer information.
+    columns:
+      - name: account_id
+        description: "Unique bank account identifier."
+      - name: customer_id
+        description: "Identifier of the account owner."
+      - name: customer_name
+        description: "Name of the account owner."
+      - name: city
+        description: "Customer's city."
+      - name: customer_segment
+        description: "Customer classification."
+      - name: account_type
+        description: "Type of bank account."
+      - name: opened_date
+        description: "Date the account was opened."
+      - name: account_status
+        description: "Current account status."
+
+  - name: fct_daily_account_activity
+    description: >
+      Daily account activity fact table with transaction
+      counts, deposits, outflows and net amounts.
+      Its grain is one row per account per transaction date.
+    columns:
+      - name: transaction_date
+        description: "Business date of the transaction."
+      - name: account_id
+        description: "Bank account associated with the activity."
+      - name: transaction_count
+        description: "Number of transactions for that account and date."
+      - name: total_deposits
+        description: "Total deposit amount."
+      - name: total_outflows
+        description: "Total purchases and withdrawals."
+      - name: net_amount
+        description: "Deposits minus total outflows."
